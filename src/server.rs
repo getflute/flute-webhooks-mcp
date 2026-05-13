@@ -295,6 +295,27 @@ impl FluteServer {
             Err(e) => flute_err_to_result(e),
         })
     }
+
+    #[tool(description = "Check whether credentials are present for the active profile. Returns `{authenticated, profile}`. Does NOT return the JWT.")]
+    pub async fn auth_status(
+        &self,
+        _params: Parameters<Empty>,
+    ) -> Result<CallToolResult, McpError> {
+        let mut args = self.base_args();
+        args.extend(["auth".into(), "token".into()]);
+        let profile = self.config.profile.as_cli_str();
+        let payload = match self.runner.run(&args).await {
+            Ok(_) | Err(FluteError::Decode { .. }) => serde_json::json!({
+                "authenticated": true, "profile": profile,
+            }),
+            Err(FluteError::Auth { .. }) => serde_json::json!({
+                "authenticated": false, "profile": profile,
+                "message": "Run `flute-webhook auth login` (optionally with --profile)",
+            }),
+            Err(e) => return Ok(flute_err_to_result(e)),
+        };
+        Ok(value_to_result(payload))
+    }
 }
 
 #[tool_handler]

@@ -183,3 +183,31 @@ async fn deliveries_retry_argv() {
         "webhooks", "deliveries", "retry", "d1",
     ]);
 }
+
+#[tokio::test]
+async fn auth_status_reports_authenticated_when_decode_ok() {
+    use flute_webhooks_mcp::error::FluteError;
+    let mock = MockRunner::new(vec![Err(FluteError::Decode {
+        message: "expected JSON, got text".into(),
+    })]);
+    let server = FluteServer::new(cfg(), mock.clone());
+    let result = server.auth_status(Parameters(Empty {})).await.unwrap();
+    let first = result.content.first().expect("expected at least one content item");
+    let json = first.as_text().expect("expected text content").text.as_str();
+    assert!(json.contains("\"authenticated\":true"), "got {json}");
+    assert!(json.contains("\"uat\""), "got {json}");
+}
+
+#[tokio::test]
+async fn auth_status_reports_unauth_on_kind_auth() {
+    use flute_webhooks_mcp::error::FluteError;
+    let mock = MockRunner::new(vec![Err(FluteError::Auth {
+        message: "no credentials for [uat]".into(),
+    })]);
+    let server = FluteServer::new(cfg(), mock.clone());
+    let result = server.auth_status(Parameters(Empty {})).await.unwrap();
+    let first = result.content.first().expect("expected at least one content item");
+    let json = first.as_text().expect("expected text content").text.as_str();
+    assert!(json.contains("\"authenticated\":false"), "got {json}");
+    assert!(json.contains("auth login"), "got {json}");
+}
