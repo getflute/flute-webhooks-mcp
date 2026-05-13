@@ -93,6 +93,33 @@ fn value_to_result(value: Value) -> CallToolResult {
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
 pub struct Empty {}
 
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct EndpointId {
+    /// The webhook endpoint id (from `endpoints_list`).
+    pub id: String,
+}
+
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct EndpointCreate {
+    /// Destination URL for the webhook (must be https).
+    pub url: String,
+    /// Event-type names to subscribe to (see `event_types_list`).
+    pub events: Vec<String>,
+    /// Human-readable name; optional.
+    #[serde(default)]
+    pub name: Option<String>,
+}
+
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct EndpointUpdate {
+    pub id: String,
+    #[serde(default)] pub url: Option<String>,
+    #[serde(default)] pub events: Option<Vec<String>>,
+    #[serde(default)] pub name: Option<String>,
+    /// One of "active" | "inactive".
+    #[serde(default)] pub status: Option<String>,
+}
+
 #[tool_router]
 impl FluteServer {
     #[tool(
@@ -108,6 +135,90 @@ impl FluteServer {
             Ok(value) => Ok(value_to_result(value)),
             Err(e) => Ok(flute_err_to_result(e)),
         }
+    }
+
+    #[tool(description = "Get a single webhook endpoint by id. Safe to retry.")]
+    pub async fn endpoints_get(
+        &self,
+        Parameters(p): Parameters<EndpointId>,
+    ) -> Result<CallToolResult, McpError> {
+        let mut args = self.base_args();
+        args.extend([
+            "webhooks".into(), "endpoints".into(), "get".into(), p.id,
+        ]);
+        Ok(match self.run_cli(args).await {
+            Ok(v) => value_to_result(v),
+            Err(e) => flute_err_to_result(e),
+        })
+    }
+
+    #[tool(description = "Create a new webhook endpoint. NOT idempotent — duplicates create a second endpoint. Response includes a one-shot `secret` you must store; the API never returns it again.")]
+    pub async fn endpoints_create(
+        &self,
+        Parameters(p): Parameters<EndpointCreate>,
+    ) -> Result<CallToolResult, McpError> {
+        let mut args = self.base_args();
+        args.extend([
+            "webhooks".into(), "endpoints".into(), "create".into(),
+            "--url".into(), p.url,
+            "--events".into(), p.events.join(","),
+        ]);
+        if let Some(name) = p.name {
+            args.extend(["--name".into(), name]);
+        }
+        Ok(match self.run_cli(args).await {
+            Ok(v) => value_to_result(v),
+            Err(e) => flute_err_to_result(e),
+        })
+    }
+
+    #[tool(description = "Update an existing webhook endpoint (full-state PUT — safe to retry).")]
+    pub async fn endpoints_update(
+        &self,
+        Parameters(p): Parameters<EndpointUpdate>,
+    ) -> Result<CallToolResult, McpError> {
+        let mut args = self.base_args();
+        args.extend([
+            "webhooks".into(), "endpoints".into(), "update".into(), p.id,
+        ]);
+        if let Some(url) = p.url { args.extend(["--url".into(), url]); }
+        if let Some(events) = p.events { args.extend(["--events".into(), events.join(",")]); }
+        if let Some(name) = p.name { args.extend(["--name".into(), name]); }
+        if let Some(status) = p.status { args.extend(["--status".into(), status]); }
+        Ok(match self.run_cli(args).await {
+            Ok(v) => value_to_result(v),
+            Err(e) => flute_err_to_result(e),
+        })
+    }
+
+    #[tool(description = "Delete a webhook endpoint by id. Second call returns 404; treat as idempotent.")]
+    pub async fn endpoints_delete(
+        &self,
+        Parameters(p): Parameters<EndpointId>,
+    ) -> Result<CallToolResult, McpError> {
+        let mut args = self.base_args();
+        args.extend([
+            "webhooks".into(), "endpoints".into(), "delete".into(), p.id.clone(), "--yes".into(),
+        ]);
+        Ok(match self.run_cli(args).await {
+            Ok(_) => value_to_result(serde_json::json!({"deleted": true, "id": p.id})),
+            Err(e) => flute_err_to_result(e),
+        })
+    }
+
+    #[tool(description = "Send a test ping to a webhook endpoint. One-shot HTTP test, safe to retry.")]
+    pub async fn endpoints_ping(
+        &self,
+        Parameters(p): Parameters<EndpointId>,
+    ) -> Result<CallToolResult, McpError> {
+        let mut args = self.base_args();
+        args.extend([
+            "webhooks".into(), "endpoints".into(), "ping".into(), p.id,
+        ]);
+        Ok(match self.run_cli(args).await {
+            Ok(v) => value_to_result(v),
+            Err(e) => flute_err_to_result(e),
+        })
     }
 }
 
