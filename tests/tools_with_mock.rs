@@ -119,3 +119,14 @@ async fn auth_error_pass_through_is_isError() {
     assert!(json.contains("\"auth\""), "missing kind=auth: {json}");
     assert!(json.contains("auth login"), "missing remediation hint: {json}");
 }
+
+#[tokio::test]
+async fn event_types_list_argv() {
+    let mock = MockRunner::new(vec![Ok(json!({"data": []}))]);
+    let server = FluteServer::new(cfg(), mock.clone());
+    server.event_types_list(Parameters(Empty {})).await.unwrap();
+    assert_eq!(mock.calls()[0], vec![
+        "--profile", "uat", "--output", "json",
+        "webhooks", "event-types", "list",
+    ]);
+}

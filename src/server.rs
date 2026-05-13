@@ -224,6 +224,19 @@ impl FluteServer {
             Err(e) => flute_err_to_result(e),
         })
     }
+
+    #[tool(description = "List the catalog of subscribable Flute event types. Safe to retry.")]
+    pub async fn event_types_list(
+        &self,
+        _params: Parameters<Empty>,
+    ) -> Result<CallToolResult, McpError> {
+        let mut args = self.base_args();
+        args.extend(["webhooks".into(), "event-types".into(), "list".into()]);
+        Ok(match self.run_cli(args).await {
+            Ok(v) => value_to_result(v),
+            Err(e) => flute_err_to_result(e),
+        })
+    }
 }
 
 #[tool_handler]
