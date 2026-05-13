@@ -34,7 +34,10 @@ async fn success_returns_parsed_json() {
         "#!/bin/sh\nprintf '%s' '{\"data\":[{\"id\":\"e1\"}]}'\n",
     );
     let runner = runner_for(bin, 5_000);
-    let out = runner.run(&["--profile".into(), "uat".into()]).await.unwrap();
+    let out = runner
+        .run(&["--profile".into(), "uat".into()])
+        .await
+        .unwrap();
     assert_eq!(out, json!({"data":[{"id":"e1"}]}));
 }
 
@@ -57,7 +60,11 @@ async fn api_envelope_failure_is_mapped() {
     let runner = runner_for(bin, 5_000);
     let err = runner.run(&[]).await.unwrap_err();
     match err {
-        FluteError::Api { status, message, correlation_id } => {
+        FluteError::Api {
+            status,
+            message,
+            correlation_id,
+        } => {
             assert_eq!(status, 422);
             assert_eq!(message, "bad");
             assert_eq!(correlation_id.as_deref(), Some("x-1"));
@@ -85,7 +92,9 @@ async fn unparseable_failure_becomes_bad_output() {
     let runner = runner_for(bin, 5_000);
     let err = runner.run(&[]).await.unwrap_err();
     match err {
-        FluteError::BadOutput { exit_code, stdout, .. } => {
+        FluteError::BadOutput {
+            exit_code, stdout, ..
+        } => {
             assert_eq!(exit_code, 7);
             assert!(stdout.contains("totally not json"));
         }
@@ -111,6 +120,9 @@ async fn timeout_kills_the_child() {
     let runner = runner_for(bin, 100);
     let start = std::time::Instant::now();
     let err = runner.run(&[]).await.unwrap_err();
-    assert!(start.elapsed() < Duration::from_secs(2), "should not have waited for sleep");
+    assert!(
+        start.elapsed() < Duration::from_secs(2),
+        "should not have waited for sleep"
+    );
     assert!(matches!(err, FluteError::Timeout { .. }));
 }

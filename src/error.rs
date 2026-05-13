@@ -40,11 +40,7 @@ struct Envelope {
 }
 
 impl FluteError {
-    pub fn from_envelope_stdout(
-        exit_code: i32,
-        stdout: &str,
-        stderr: &str,
-    ) -> FluteError {
+    pub fn from_envelope_stdout(exit_code: i32, stdout: &str, stderr: &str) -> FluteError {
         let parsed: Result<Envelope, _> = serde_json::from_str(stdout.trim());
         let Ok(env) = parsed else {
             return FluteError::BadOutput {
@@ -59,10 +55,18 @@ impl FluteError {
                 message: env.message,
                 correlation_id: env.correlation_id,
             },
-            "transport" => FluteError::Transport { message: env.message },
-            "auth" => FluteError::Auth { message: env.message },
-            "decode" => FluteError::Decode { message: env.message },
-            "client" => FluteError::Client { message: env.message },
+            "transport" => FluteError::Transport {
+                message: env.message,
+            },
+            "auth" => FluteError::Auth {
+                message: env.message,
+            },
+            "decode" => FluteError::Decode {
+                message: env.message,
+            },
+            "client" => FluteError::Client {
+                message: env.message,
+            },
             _ => FluteError::BadOutput {
                 exit_code,
                 stdout: stdout.to_string(),
@@ -81,7 +85,11 @@ mod tests {
     fn parses_api_envelope_with_all_fields() {
         let body = r#"{"kind":"api","message":"validation failed","status":422,"correlation_id":"abc-123"}"#;
         match FluteError::from_envelope_stdout(1, body, "") {
-            FluteError::Api { status, message, correlation_id } => {
+            FluteError::Api {
+                status,
+                message,
+                correlation_id,
+            } => {
                 assert_eq!(status, 422);
                 assert_eq!(message, "validation failed");
                 assert_eq!(correlation_id.as_deref(), Some("abc-123"));
@@ -103,7 +111,11 @@ mod tests {
     fn unparseable_stdout_becomes_bad_output() {
         let result = FluteError::from_envelope_stdout(2, "not json", "stderr text");
         match result {
-            FluteError::BadOutput { exit_code, stdout, stderr } => {
+            FluteError::BadOutput {
+                exit_code,
+                stdout,
+                stderr,
+            } => {
                 assert_eq!(exit_code, 2);
                 assert_eq!(stdout, "not json");
                 assert_eq!(stderr, "stderr text");

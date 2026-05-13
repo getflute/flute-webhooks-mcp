@@ -76,7 +76,12 @@ impl Config {
 
         let debug = matches!(getenv("FLUTE_MCP_DEBUG").as_deref(), Some(v) if !v.is_empty());
 
-        Ok(Self { profile, binary, timeout, debug })
+        Ok(Self {
+            profile,
+            binary,
+            timeout,
+            debug,
+        })
     }
 }
 
@@ -88,8 +93,10 @@ mod tests {
     use tempfile::TempDir;
 
     fn make_env<'a>(pairs: &'a [(&'a str, &'a str)]) -> impl Fn(&str) -> Option<String> + 'a {
-        let map: HashMap<String, String> =
-            pairs.iter().map(|(k, v)| (k.to_string(), v.to_string())).collect();
+        let map: HashMap<String, String> = pairs
+            .iter()
+            .map(|(k, v)| (k.to_string(), v.to_string()))
+            .collect();
         move |k| map.get(k).cloned()
     }
 

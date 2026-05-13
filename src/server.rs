@@ -1,12 +1,10 @@
 use std::sync::Arc;
 
 use rmcp::{
-    handler::server::router::tool::ToolRouter,
+    ServerHandler,
     handler::server::wrapper::Parameters,
     model::{CallToolResult, Content, ErrorData as McpError, ServerInfo},
-    schemars,
-    tool, tool_handler, tool_router,
-    ServerHandler,
+    schemars, tool, tool_handler, tool_router,
 };
 use serde::Deserialize;
 use serde_json::Value;
@@ -19,16 +17,11 @@ use crate::runner::CliRunner;
 pub struct FluteServer {
     config: Arc<Config>,
     runner: Arc<dyn CliRunner>,
-    tool_router: ToolRouter<Self>,
 }
 
 impl FluteServer {
     pub fn new(config: Arc<Config>, runner: Arc<dyn CliRunner>) -> Self {
-        Self {
-            config,
-            runner,
-            tool_router: Self::tool_router(),
-        }
+        Self { config, runner }
     }
 
     fn base_args(&self) -> Vec<String> {
@@ -47,7 +40,11 @@ impl FluteServer {
 
 fn flute_err_to_result(err: FluteError) -> CallToolResult {
     let payload = match &err {
-        FluteError::Api { status, message, correlation_id } => serde_json::json!({
+        FluteError::Api {
+            status,
+            message,
+            correlation_id,
+        } => serde_json::json!({
             "kind": "api",
             "status": status,
             "message": message,
@@ -73,8 +70,16 @@ fn flute_err_to_result(err: FluteError) -> CallToolResult {
         FluteError::Timeout { secs } => serde_json::json!({
             "kind": "timeout", "message": format!("flute-webhook timed out after {secs}s"),
         }),
-        FluteError::BadOutput { exit_code, stdout, stderr } => {
-            let stderr_trunc = if stderr.len() > 4096 { &stderr[..4096] } else { stderr.as_str() };
+        FluteError::BadOutput {
+            exit_code,
+            stdout,
+            stderr,
+        } => {
+            let stderr_trunc = if stderr.len() > 4096 {
+                &stderr[..4096]
+            } else {
+                stderr.as_str()
+            };
             serde_json::json!({
                 "kind": "bad_output",
                 "exit_code": exit_code,
@@ -117,21 +122,28 @@ pub struct EndpointCreate {
 #[serde(deny_unknown_fields)]
 pub struct EndpointUpdate {
     pub id: String,
-    #[serde(default)] pub url: Option<String>,
-    #[serde(default)] pub events: Option<Vec<String>>,
-    #[serde(default)] pub name: Option<String>,
+    #[serde(default)]
+    pub url: Option<String>,
+    #[serde(default)]
+    pub events: Option<Vec<String>>,
+    #[serde(default)]
+    pub name: Option<String>,
     /// One of "active" | "inactive".
-    #[serde(default)] pub status: Option<String>,
+    #[serde(default)]
+    pub status: Option<String>,
 }
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct DeliveriesList {
-    #[serde(default)] pub endpoint_id: Option<String>,
+    #[serde(default)]
+    pub endpoint_id: Option<String>,
     /// "success" or "failed".
-    #[serde(default)] pub status: Option<String>,
+    #[serde(default)]
+    pub status: Option<String>,
     /// 1..=200 (server default 50).
-    #[serde(default)] pub limit: Option<u32>,
+    #[serde(default)]
+    pub limit: Option<u32>,
 }
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
@@ -163,25 +175,29 @@ impl FluteServer {
         Parameters(p): Parameters<EndpointId>,
     ) -> Result<CallToolResult, McpError> {
         let mut args = self.base_args();
-        args.extend([
-            "webhooks".into(), "endpoints".into(), "get".into(), p.id,
-        ]);
+        args.extend(["webhooks".into(), "endpoints".into(), "get".into(), p.id]);
         Ok(match self.run_cli(args).await {
             Ok(v) => value_to_result(v),
             Err(e) => flute_err_to_result(e),
         })
     }
 
-    #[tool(description = "Create a new webhook endpoint. NOT idempotent — duplicates create a second endpoint. Response includes a one-shot `secret` you must store; the API never returns it again.")]
+    #[tool(
+        description = "Create a new webhook endpoint. NOT idempotent — duplicates create a second endpoint. Response includes a one-shot `secret` you must store; the API never returns it again."
+    )]
     pub async fn endpoints_create(
         &self,
         Parameters(p): Parameters<EndpointCreate>,
     ) -> Result<CallToolResult, McpError> {
         let mut args = self.base_args();
         args.extend([
-            "webhooks".into(), "endpoints".into(), "create".into(),
-            "--url".into(), p.url,
-            "--events".into(), p.events.join(","),
+            "webhooks".into(),
+            "endpoints".into(),
+            "create".into(),
+            "--url".into(),
+            p.url,
+            "--events".into(),
+            p.events.join(","),
         ]);
         if let Some(name) = p.name {
             args.extend(["--name".into(), name]);
@@ -198,27 +214,39 @@ impl FluteServer {
         Parameters(p): Parameters<EndpointUpdate>,
     ) -> Result<CallToolResult, McpError> {
         let mut args = self.base_args();
-        args.extend([
-            "webhooks".into(), "endpoints".into(), "update".into(), p.id,
-        ]);
-        if let Some(url) = p.url { args.extend(["--url".into(), url]); }
-        if let Some(events) = p.events { args.extend(["--events".into(), events.join(",")]); }
-        if let Some(name) = p.name { args.extend(["--name".into(), name]); }
-        if let Some(status) = p.status { args.extend(["--status".into(), status]); }
+        args.extend(["webhooks".into(), "endpoints".into(), "update".into(), p.id]);
+        if let Some(url) = p.url {
+            args.extend(["--url".into(), url]);
+        }
+        if let Some(events) = p.events {
+            args.extend(["--events".into(), events.join(",")]);
+        }
+        if let Some(name) = p.name {
+            args.extend(["--name".into(), name]);
+        }
+        if let Some(status) = p.status {
+            args.extend(["--status".into(), status]);
+        }
         Ok(match self.run_cli(args).await {
             Ok(v) => value_to_result(v),
             Err(e) => flute_err_to_result(e),
         })
     }
 
-    #[tool(description = "Delete a webhook endpoint by id. Second call returns 404; treat as idempotent.")]
+    #[tool(
+        description = "Delete a webhook endpoint by id. Second call returns 404; treat as idempotent."
+    )]
     pub async fn endpoints_delete(
         &self,
         Parameters(p): Parameters<EndpointId>,
     ) -> Result<CallToolResult, McpError> {
         let mut args = self.base_args();
         args.extend([
-            "webhooks".into(), "endpoints".into(), "delete".into(), p.id.clone(), "--yes".into(),
+            "webhooks".into(),
+            "endpoints".into(),
+            "delete".into(),
+            p.id.clone(),
+            "--yes".into(),
         ]);
         Ok(match self.run_cli(args).await {
             Ok(_) => value_to_result(serde_json::json!({"deleted": true, "id": p.id})),
@@ -226,15 +254,15 @@ impl FluteServer {
         })
     }
 
-    #[tool(description = "Send a test ping to a webhook endpoint. One-shot HTTP test, safe to retry.")]
+    #[tool(
+        description = "Send a test ping to a webhook endpoint. One-shot HTTP test, safe to retry."
+    )]
     pub async fn endpoints_ping(
         &self,
         Parameters(p): Parameters<EndpointId>,
     ) -> Result<CallToolResult, McpError> {
         let mut args = self.base_args();
-        args.extend([
-            "webhooks".into(), "endpoints".into(), "ping".into(), p.id,
-        ]);
+        args.extend(["webhooks".into(), "endpoints".into(), "ping".into(), p.id]);
         Ok(match self.run_cli(args).await {
             Ok(v) => value_to_result(v),
             Err(e) => flute_err_to_result(e),
@@ -254,23 +282,33 @@ impl FluteServer {
         })
     }
 
-    #[tool(description = "List delivery log entries, optionally filtered by endpoint, status, and limit. Safe to retry.")]
+    #[tool(
+        description = "List delivery log entries, optionally filtered by endpoint, status, and limit. Safe to retry."
+    )]
     pub async fn deliveries_list(
         &self,
         Parameters(p): Parameters<DeliveriesList>,
     ) -> Result<CallToolResult, McpError> {
         let mut args = self.base_args();
         args.extend(["webhooks".into(), "deliveries".into(), "list".into()]);
-        if let Some(eid) = p.endpoint_id { args.extend(["--endpoint-id".into(), eid]); }
-        if let Some(s) = p.status { args.extend(["--status".into(), s]); }
-        if let Some(n) = p.limit { args.extend(["--limit".into(), n.to_string()]); }
+        if let Some(eid) = p.endpoint_id {
+            args.extend(["--endpoint-id".into(), eid]);
+        }
+        if let Some(s) = p.status {
+            args.extend(["--status".into(), s]);
+        }
+        if let Some(n) = p.limit {
+            args.extend(["--limit".into(), n.to_string()]);
+        }
         Ok(match self.run_cli(args).await {
             Ok(v) => value_to_result(v),
             Err(e) => flute_err_to_result(e),
         })
     }
 
-    #[tool(description = "Get a single delivery log with full request and response bodies. Safe to retry.")]
+    #[tool(
+        description = "Get a single delivery log with full request and response bodies. Safe to retry."
+    )]
     pub async fn deliveries_get(
         &self,
         Parameters(p): Parameters<DeliveryId>,
@@ -283,7 +321,9 @@ impl FluteServer {
         })
     }
 
-    #[tool(description = "Re-schedule a failed delivery. NOT idempotent — each call schedules an additional retry. Check `deliveries_get` before retrying again.")]
+    #[tool(
+        description = "Re-schedule a failed delivery. NOT idempotent — each call schedules an additional retry. Check `deliveries_get` before retrying again."
+    )]
     pub async fn deliveries_retry(
         &self,
         Parameters(p): Parameters<DeliveryId>,
@@ -296,7 +336,9 @@ impl FluteServer {
         })
     }
 
-    #[tool(description = "Check whether credentials are present for the active profile. Returns `{authenticated, profile}`. Does NOT return the JWT.")]
+    #[tool(
+        description = "Check whether credentials are present for the active profile. Returns `{authenticated, profile}`. Does NOT return the JWT."
+    )]
     pub async fn auth_status(
         &self,
         _params: Parameters<Empty>,

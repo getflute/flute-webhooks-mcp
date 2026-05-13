@@ -2,7 +2,9 @@ use std::sync::Arc;
 
 use flute_webhooks_mcp::config::{Config, Profile};
 use flute_webhooks_mcp::runner::MockRunner;
-use flute_webhooks_mcp::server::{DeliveriesList, DeliveryId, EndpointCreate, EndpointId, EndpointUpdate, Empty, FluteServer};
+use flute_webhooks_mcp::server::{
+    DeliveriesList, DeliveryId, Empty, EndpointCreate, EndpointId, EndpointUpdate, FluteServer,
+};
 use pretty_assertions::assert_eq;
 use rmcp::handler::server::wrapper::Parameters;
 use serde_json::json;
@@ -45,67 +47,126 @@ async fn endpoints_list_argv_matches_agents_md_spec() {
 async fn endpoints_get_argv() {
     let mock = MockRunner::new(vec![Ok(json!({"id":"e1"}))]);
     let server = FluteServer::new(cfg(), mock.clone());
-    server.endpoints_get(Parameters(EndpointId { id: "e1".into() })).await.unwrap();
-    assert_eq!(mock.calls()[0], vec![
-        "--profile", "uat", "--output", "json",
-        "webhooks", "endpoints", "get", "e1",
-    ]);
+    server
+        .endpoints_get(Parameters(EndpointId { id: "e1".into() }))
+        .await
+        .unwrap();
+    assert_eq!(
+        mock.calls()[0],
+        vec![
+            "--profile",
+            "uat",
+            "--output",
+            "json",
+            "webhooks",
+            "endpoints",
+            "get",
+            "e1",
+        ]
+    );
 }
 
 #[tokio::test]
 async fn endpoints_create_argv_with_name() {
     let mock = MockRunner::new(vec![Ok(json!({"id":"e1","secret":"shh"}))]);
     let server = FluteServer::new(cfg(), mock.clone());
-    server.endpoints_create(Parameters(EndpointCreate {
-        url: "https://x.example/hook".into(),
-        events: vec!["transaction.card.captured".into(), "refund.completed".into()],
-        name: Some("My Hook".into()),
-    })).await.unwrap();
-    assert_eq!(mock.calls()[0], vec![
-        "--profile", "uat", "--output", "json",
-        "webhooks", "endpoints", "create",
-        "--url", "https://x.example/hook",
-        "--events", "transaction.card.captured,refund.completed",
-        "--name", "My Hook",
-    ]);
+    server
+        .endpoints_create(Parameters(EndpointCreate {
+            url: "https://x.example/hook".into(),
+            events: vec![
+                "transaction.card.captured".into(),
+                "refund.completed".into(),
+            ],
+            name: Some("My Hook".into()),
+        }))
+        .await
+        .unwrap();
+    assert_eq!(
+        mock.calls()[0],
+        vec![
+            "--profile",
+            "uat",
+            "--output",
+            "json",
+            "webhooks",
+            "endpoints",
+            "create",
+            "--url",
+            "https://x.example/hook",
+            "--events",
+            "transaction.card.captured,refund.completed",
+            "--name",
+            "My Hook",
+        ]
+    );
 }
 
 #[tokio::test]
 async fn endpoints_update_only_includes_set_fields() {
     let mock = MockRunner::new(vec![Ok(json!({"id":"e1"}))]);
     let server = FluteServer::new(cfg(), mock.clone());
-    server.endpoints_update(Parameters(EndpointUpdate {
-        id: "e1".into(),
-        url: None,
-        events: None,
-        name: None,
-        status: Some("inactive".into()),
-    })).await.unwrap();
-    assert_eq!(mock.calls()[0], vec![
-        "--profile", "uat", "--output", "json",
-        "webhooks", "endpoints", "update", "e1",
-        "--status", "inactive",
-    ]);
+    server
+        .endpoints_update(Parameters(EndpointUpdate {
+            id: "e1".into(),
+            url: None,
+            events: None,
+            name: None,
+            status: Some("inactive".into()),
+        }))
+        .await
+        .unwrap();
+    assert_eq!(
+        mock.calls()[0],
+        vec![
+            "--profile",
+            "uat",
+            "--output",
+            "json",
+            "webhooks",
+            "endpoints",
+            "update",
+            "e1",
+            "--status",
+            "inactive",
+        ]
+    );
 }
 
 #[tokio::test]
 async fn endpoints_delete_synthesizes_result() {
     let mock = MockRunner::new(vec![Ok(serde_json::Value::Null)]);
     let server = FluteServer::new(cfg(), mock.clone());
-    let result = server.endpoints_delete(Parameters(EndpointId { id: "e1".into() })).await.unwrap();
-    assert_eq!(mock.calls()[0], vec![
-        "--profile", "uat", "--output", "json",
-        "webhooks", "endpoints", "delete", "e1", "--yes",
-    ]);
+    let result = server
+        .endpoints_delete(Parameters(EndpointId { id: "e1".into() }))
+        .await
+        .unwrap();
+    assert_eq!(
+        mock.calls()[0],
+        vec![
+            "--profile",
+            "uat",
+            "--output",
+            "json",
+            "webhooks",
+            "endpoints",
+            "delete",
+            "e1",
+            "--yes",
+        ]
+    );
     let content = &result.content;
     let first = content.first().expect("expected at least one content item");
-    let json = first.as_text().expect("expected text content").text.as_str();
+    let json = first
+        .as_text()
+        .expect("expected text content")
+        .text
+        .as_str();
     assert!(json.contains("\"deleted\""), "missing deleted: {json}");
     assert!(json.contains("\"e1\""), "missing id: {json}");
 }
 
 #[tokio::test]
-async fn auth_error_pass_through_is_isError() {
+async fn auth_error_pass_through_is_error() {
     use flute_webhooks_mcp::error::FluteError;
     let mock = MockRunner::new(vec![Err(FluteError::Auth {
         message: "no credentials for [uat]".into(),
@@ -115,9 +176,16 @@ async fn auth_error_pass_through_is_isError() {
     assert_eq!(result.is_error.unwrap_or(false), true);
     let content = &result.content;
     let first = content.first().expect("expected at least one content item");
-    let json = first.as_text().expect("expected text content").text.as_str();
+    let json = first
+        .as_text()
+        .expect("expected text content")
+        .text
+        .as_str();
     assert!(json.contains("\"auth\""), "missing kind=auth: {json}");
-    assert!(json.contains("auth login"), "missing remediation hint: {json}");
+    assert!(
+        json.contains("auth login"),
+        "missing remediation hint: {json}"
+    );
 }
 
 #[tokio::test]
@@ -125,63 +193,122 @@ async fn event_types_list_argv() {
     let mock = MockRunner::new(vec![Ok(json!({"data": []}))]);
     let server = FluteServer::new(cfg(), mock.clone());
     server.event_types_list(Parameters(Empty {})).await.unwrap();
-    assert_eq!(mock.calls()[0], vec![
-        "--profile", "uat", "--output", "json",
-        "webhooks", "event-types", "list",
-    ]);
+    assert_eq!(
+        mock.calls()[0],
+        vec![
+            "--profile",
+            "uat",
+            "--output",
+            "json",
+            "webhooks",
+            "event-types",
+            "list",
+        ]
+    );
 }
 
 #[tokio::test]
 async fn deliveries_list_no_filters() {
     let mock = MockRunner::new(vec![Ok(json!({"items": [], "total": 0}))]);
     let server = FluteServer::new(cfg(), mock.clone());
-    server.deliveries_list(Parameters(DeliveriesList {
-        endpoint_id: None, status: None, limit: None,
-    })).await.unwrap();
-    assert_eq!(mock.calls()[0], vec![
-        "--profile", "uat", "--output", "json",
-        "webhooks", "deliveries", "list",
-    ]);
+    server
+        .deliveries_list(Parameters(DeliveriesList {
+            endpoint_id: None,
+            status: None,
+            limit: None,
+        }))
+        .await
+        .unwrap();
+    assert_eq!(
+        mock.calls()[0],
+        vec![
+            "--profile",
+            "uat",
+            "--output",
+            "json",
+            "webhooks",
+            "deliveries",
+            "list",
+        ]
+    );
 }
 
 #[tokio::test]
 async fn deliveries_list_all_filters() {
     let mock = MockRunner::new(vec![Ok(json!({"items": [], "total": 0}))]);
     let server = FluteServer::new(cfg(), mock.clone());
-    server.deliveries_list(Parameters(DeliveriesList {
-        endpoint_id: Some("e1".into()),
-        status: Some("failed".into()),
-        limit: Some(10),
-    })).await.unwrap();
-    assert_eq!(mock.calls()[0], vec![
-        "--profile", "uat", "--output", "json",
-        "webhooks", "deliveries", "list",
-        "--endpoint-id", "e1",
-        "--status", "failed",
-        "--limit", "10",
-    ]);
+    server
+        .deliveries_list(Parameters(DeliveriesList {
+            endpoint_id: Some("e1".into()),
+            status: Some("failed".into()),
+            limit: Some(10),
+        }))
+        .await
+        .unwrap();
+    assert_eq!(
+        mock.calls()[0],
+        vec![
+            "--profile",
+            "uat",
+            "--output",
+            "json",
+            "webhooks",
+            "deliveries",
+            "list",
+            "--endpoint-id",
+            "e1",
+            "--status",
+            "failed",
+            "--limit",
+            "10",
+        ]
+    );
 }
 
 #[tokio::test]
 async fn deliveries_get_argv() {
     let mock = MockRunner::new(vec![Ok(json!({"id":"d1"}))]);
     let server = FluteServer::new(cfg(), mock.clone());
-    server.deliveries_get(Parameters(DeliveryId { id: "d1".into() })).await.unwrap();
-    assert_eq!(mock.calls()[0], vec![
-        "--profile", "uat", "--output", "json",
-        "webhooks", "deliveries", "get", "d1",
-    ]);
+    server
+        .deliveries_get(Parameters(DeliveryId { id: "d1".into() }))
+        .await
+        .unwrap();
+    assert_eq!(
+        mock.calls()[0],
+        vec![
+            "--profile",
+            "uat",
+            "--output",
+            "json",
+            "webhooks",
+            "deliveries",
+            "get",
+            "d1",
+        ]
+    );
 }
 
 #[tokio::test]
 async fn deliveries_retry_argv() {
     let mock = MockRunner::new(vec![Ok(json!({"id":"d1","status":"pending"}))]);
     let server = FluteServer::new(cfg(), mock.clone());
-    server.deliveries_retry(Parameters(DeliveryId { id: "d1".into() })).await.unwrap();
-    assert_eq!(mock.calls()[0], vec![
-        "--profile", "uat", "--output", "json",
-        "webhooks", "deliveries", "retry", "d1",
-    ]);
+    server
+        .deliveries_retry(Parameters(DeliveryId { id: "d1".into() }))
+        .await
+        .unwrap();
+    assert_eq!(
+        mock.calls()[0],
+        vec![
+            "--profile",
+            "uat",
+            "--output",
+            "json",
+            "webhooks",
+            "deliveries",
+            "retry",
+            "d1",
+        ]
+    );
 }
 
 #[tokio::test]
@@ -192,8 +319,15 @@ async fn auth_status_reports_authenticated_when_decode_ok() {
     })]);
     let server = FluteServer::new(cfg(), mock.clone());
     let result = server.auth_status(Parameters(Empty {})).await.unwrap();
-    let first = result.content.first().expect("expected at least one content item");
-    let json = first.as_text().expect("expected text content").text.as_str();
+    let first = result
+        .content
+        .first()
+        .expect("expected at least one content item");
+    let json = first
+        .as_text()
+        .expect("expected text content")
+        .text
+        .as_str();
     assert!(json.contains("\"authenticated\":true"), "got {json}");
     assert!(json.contains("\"uat\""), "got {json}");
 }
@@ -206,8 +340,15 @@ async fn auth_status_reports_unauth_on_kind_auth() {
     })]);
     let server = FluteServer::new(cfg(), mock.clone());
     let result = server.auth_status(Parameters(Empty {})).await.unwrap();
-    let first = result.content.first().expect("expected at least one content item");
-    let json = first.as_text().expect("expected text content").text.as_str();
+    let first = result
+        .content
+        .first()
+        .expect("expected at least one content item");
+    let json = first
+        .as_text()
+        .expect("expected text content")
+        .text
+        .as_str();
     assert!(json.contains("\"authenticated\":false"), "got {json}");
     assert!(json.contains("auth login"), "got {json}");
 }

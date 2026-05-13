@@ -25,6 +25,7 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 which = "8"
 clap = { version = "4", features = ["derive", "env"] }
 async-trait = "0.1"
+anyhow = "1"
 
 [dev-dependencies]
 tokio = { version = "1", features = ["macros", "rt-multi-thread", "process", "time", "test-util"] }

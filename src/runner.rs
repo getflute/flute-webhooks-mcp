@@ -98,7 +98,9 @@ impl CliRunner for ProcessRunner {
                 message: format!("could not parse stdout as JSON: {e}"),
             })
         } else {
-            Err(FluteError::from_envelope_stdout(exit_code, &stdout, &stderr))
+            Err(FluteError::from_envelope_stdout(
+                exit_code, &stdout, &stderr,
+            ))
         }
     }
 }
