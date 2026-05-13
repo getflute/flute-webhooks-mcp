@@ -91,15 +91,18 @@ fn value_to_result(value: Value) -> CallToolResult {
 }
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
+#[serde(deny_unknown_fields)]
 pub struct Empty {}
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
+#[serde(deny_unknown_fields)]
 pub struct EndpointId {
     /// The webhook endpoint id (from `endpoints_list`).
     pub id: String,
 }
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
+#[serde(deny_unknown_fields)]
 pub struct EndpointCreate {
     /// Destination URL for the webhook (must be https).
     pub url: String,
@@ -111,6 +114,7 @@ pub struct EndpointCreate {
 }
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
+#[serde(deny_unknown_fields)]
 pub struct EndpointUpdate {
     pub id: String,
     #[serde(default)] pub url: Option<String>,
