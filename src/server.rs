@@ -76,7 +76,7 @@ fn flute_err_to_result(err: FluteError) -> CallToolResult {
             stderr,
         } => {
             let stderr_trunc = if stderr.len() > 4096 {
-                &stderr[..4096]
+                &stderr[..stderr.floor_char_boundary(4096)]
             } else {
                 stderr.as_str()
             };
@@ -88,11 +88,15 @@ fn flute_err_to_result(err: FluteError) -> CallToolResult {
             })
         }
     };
-    CallToolResult::error(vec![Content::json(payload).unwrap()])
+    CallToolResult::error(vec![
+        Content::json(payload).expect("serde_json::Value is always JSON-serializable"),
+    ])
 }
 
 fn value_to_result(value: Value) -> CallToolResult {
-    CallToolResult::success(vec![Content::json(value).unwrap()])
+    CallToolResult::success(vec![
+        Content::json(value).expect("serde_json::Value is always JSON-serializable"),
+    ])
 }
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]

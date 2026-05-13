@@ -352,3 +352,39 @@ async fn auth_status_reports_unauth_on_kind_auth() {
     assert!(json.contains("\"authenticated\":false"), "got {json}");
     assert!(json.contains("auth login"), "got {json}");
 }
+
+#[tokio::test]
+async fn endpoints_ping_argv() {
+    let mock = MockRunner::new(vec![Ok(json!({"success": true, "status_code": 200}))]);
+    let server = FluteServer::new(cfg(), mock.clone());
+    server
+        .endpoints_ping(Parameters(EndpointId { id: "e1".into() }))
+        .await
+        .unwrap();
+    assert_eq!(
+        mock.calls()[0],
+        vec![
+            "--profile",
+            "uat",
+            "--output",
+            "json",
+            "webhooks",
+            "endpoints",
+            "ping",
+            "e1",
+        ]
+    );
+}
+
+#[tokio::test]
+async fn auth_status_argv() {
+    let mock = MockRunner::new(vec![Err(flute_webhooks_mcp::error::FluteError::Decode {
+        message: "plain-text JWT".into(),
+    })]);
+    let server = FluteServer::new(cfg(), mock.clone());
+    server.auth_status(Parameters(Empty {})).await.unwrap();
+    assert_eq!(
+        mock.calls()[0],
+        vec!["--profile", "uat", "--output", "json", "auth", "token",]
+    );
+}
