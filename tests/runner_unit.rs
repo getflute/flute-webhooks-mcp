@@ -103,3 +103,14 @@ async fn missing_binary_produces_spawn_error() {
     let err = runner.run(&[]).await.unwrap_err();
     assert!(matches!(err, FluteError::Spawn(_)));
 }
+
+#[tokio::test]
+async fn timeout_kills_the_child() {
+    let dir = TempDir::new().unwrap();
+    let bin = write_script(&dir, "#!/bin/sh\nsleep 10\n");
+    let runner = runner_for(bin, 100);
+    let start = std::time::Instant::now();
+    let err = runner.run(&[]).await.unwrap_err();
+    assert!(start.elapsed() < Duration::from_secs(2), "should not have waited for sleep");
+    assert!(matches!(err, FluteError::Timeout { .. }));
+}
