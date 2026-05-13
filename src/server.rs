@@ -124,6 +124,22 @@ pub struct EndpointUpdate {
     #[serde(default)] pub status: Option<String>,
 }
 
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct DeliveriesList {
+    #[serde(default)] pub endpoint_id: Option<String>,
+    /// "success" or "failed".
+    #[serde(default)] pub status: Option<String>,
+    /// 1..=200 (server default 50).
+    #[serde(default)] pub limit: Option<u32>,
+}
+
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct DeliveryId {
+    pub id: String,
+}
+
 #[tool_router]
 impl FluteServer {
     #[tool(
@@ -232,6 +248,48 @@ impl FluteServer {
     ) -> Result<CallToolResult, McpError> {
         let mut args = self.base_args();
         args.extend(["webhooks".into(), "event-types".into(), "list".into()]);
+        Ok(match self.run_cli(args).await {
+            Ok(v) => value_to_result(v),
+            Err(e) => flute_err_to_result(e),
+        })
+    }
+
+    #[tool(description = "List delivery log entries, optionally filtered by endpoint, status, and limit. Safe to retry.")]
+    pub async fn deliveries_list(
+        &self,
+        Parameters(p): Parameters<DeliveriesList>,
+    ) -> Result<CallToolResult, McpError> {
+        let mut args = self.base_args();
+        args.extend(["webhooks".into(), "deliveries".into(), "list".into()]);
+        if let Some(eid) = p.endpoint_id { args.extend(["--endpoint-id".into(), eid]); }
+        if let Some(s) = p.status { args.extend(["--status".into(), s]); }
+        if let Some(n) = p.limit { args.extend(["--limit".into(), n.to_string()]); }
+        Ok(match self.run_cli(args).await {
+            Ok(v) => value_to_result(v),
+            Err(e) => flute_err_to_result(e),
+        })
+    }
+
+    #[tool(description = "Get a single delivery log with full request and response bodies. Safe to retry.")]
+    pub async fn deliveries_get(
+        &self,
+        Parameters(p): Parameters<DeliveryId>,
+    ) -> Result<CallToolResult, McpError> {
+        let mut args = self.base_args();
+        args.extend(["webhooks".into(), "deliveries".into(), "get".into(), p.id]);
+        Ok(match self.run_cli(args).await {
+            Ok(v) => value_to_result(v),
+            Err(e) => flute_err_to_result(e),
+        })
+    }
+
+    #[tool(description = "Re-schedule a failed delivery. NOT idempotent — each call schedules an additional retry. Check `deliveries_get` before retrying again.")]
+    pub async fn deliveries_retry(
+        &self,
+        Parameters(p): Parameters<DeliveryId>,
+    ) -> Result<CallToolResult, McpError> {
+        let mut args = self.base_args();
+        args.extend(["webhooks".into(), "deliveries".into(), "retry".into(), p.id]);
         Ok(match self.run_cli(args).await {
             Ok(v) => value_to_result(v),
             Err(e) => flute_err_to_result(e),
