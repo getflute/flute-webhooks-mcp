@@ -3,7 +3,7 @@ use std::io::{BufRead, BufReader, Write};
 use std::os::unix::fs::PermissionsExt;
 use std::process::{Command, Stdio};
 
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use tempfile::TempDir;
 
 fn write_fake_flute(dir: &TempDir, stdout: &str, exit_code: i32) -> std::path::PathBuf {
@@ -57,35 +57,72 @@ fn lists_tools_and_calls_endpoints_list_through_stdio() {
     let mut reader = BufReader::new(child.stdout.take().unwrap());
 
     // 1. initialize
-    stdin.write_all(jsonrpc(1, "initialize", json!({
-        "protocolVersion":"2025-03-26",
-        "capabilities":{},
-        "clientInfo":{"name":"e2e","version":"0"}
-    })).as_bytes()).unwrap();
+    stdin
+        .write_all(
+            jsonrpc(
+                1,
+                "initialize",
+                json!({
+                    "protocolVersion":"2025-03-26",
+                    "capabilities":{},
+                    "clientInfo":{"name":"e2e","version":"0"}
+                }),
+            )
+            .as_bytes(),
+        )
+        .unwrap();
     let init = read_one_frame(&mut reader);
     assert_eq!(init["id"], 1);
     assert!(init["result"].is_object());
 
     // 2. notifications/initialized (one-way, no response expected)
-    stdin.write_all(jsonrpc_notify("notifications/initialized", json!({})).as_bytes()).unwrap();
+    stdin
+        .write_all(jsonrpc_notify("notifications/initialized", json!({})).as_bytes())
+        .unwrap();
 
     // 3. tools/list — assert our tools are exposed
-    stdin.write_all(jsonrpc(2, "tools/list", json!({})).as_bytes()).unwrap();
+    stdin
+        .write_all(jsonrpc(2, "tools/list", json!({})).as_bytes())
+        .unwrap();
     let listed = read_one_frame(&mut reader);
-    let names: Vec<String> = listed["result"]["tools"].as_array().unwrap()
-        .iter().map(|t| t["name"].as_str().unwrap().to_string()).collect();
+    let names: Vec<String> = listed["result"]["tools"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|t| t["name"].as_str().unwrap().to_string())
+        .collect();
     for expected in &[
-        "endpoints_list", "endpoints_get", "endpoints_create", "endpoints_update",
-        "endpoints_delete", "endpoints_ping", "event_types_list",
-        "deliveries_list", "deliveries_get", "deliveries_retry", "auth_status",
+        "endpoints_list",
+        "endpoints_get",
+        "endpoints_create",
+        "endpoints_update",
+        "endpoints_delete",
+        "endpoints_ping",
+        "event_types_list",
+        "deliveries_list",
+        "deliveries_get",
+        "deliveries_retry",
+        "auth_status",
     ] {
-        assert!(names.contains(&expected.to_string()), "missing tool {expected} in {names:?}");
+        assert!(
+            names.contains(&expected.to_string()),
+            "missing tool {expected} in {names:?}"
+        );
     }
 
     // 4. tools/call endpoints_list — round-trip the payload
-    stdin.write_all(jsonrpc(3, "tools/call", json!({
-        "name":"endpoints_list","arguments":{}
-    })).as_bytes()).unwrap();
+    stdin
+        .write_all(
+            jsonrpc(
+                3,
+                "tools/call",
+                json!({
+                    "name":"endpoints_list","arguments":{}
+                }),
+            )
+            .as_bytes(),
+        )
+        .unwrap();
     let called = read_one_frame(&mut reader);
     assert_eq!(called["id"], 3);
     let content = &called["result"]["content"][0];
@@ -119,16 +156,36 @@ fn auth_error_surfaces_as_is_error() {
     let mut stdin = child.stdin.take().unwrap();
     let mut reader = BufReader::new(child.stdout.take().unwrap());
 
-    stdin.write_all(jsonrpc(1, "initialize", json!({
-        "protocolVersion":"2025-03-26","capabilities":{},
-        "clientInfo":{"name":"e2e","version":"0"}
-    })).as_bytes()).unwrap();
+    stdin
+        .write_all(
+            jsonrpc(
+                1,
+                "initialize",
+                json!({
+                    "protocolVersion":"2025-03-26","capabilities":{},
+                    "clientInfo":{"name":"e2e","version":"0"}
+                }),
+            )
+            .as_bytes(),
+        )
+        .unwrap();
     let _ = read_one_frame(&mut reader);
-    stdin.write_all(jsonrpc_notify("notifications/initialized", json!({})).as_bytes()).unwrap();
+    stdin
+        .write_all(jsonrpc_notify("notifications/initialized", json!({})).as_bytes())
+        .unwrap();
 
-    stdin.write_all(jsonrpc(2, "tools/call", json!({
-        "name":"endpoints_list","arguments":{}
-    })).as_bytes()).unwrap();
+    stdin
+        .write_all(
+            jsonrpc(
+                2,
+                "tools/call",
+                json!({
+                    "name":"endpoints_list","arguments":{}
+                }),
+            )
+            .as_bytes(),
+        )
+        .unwrap();
     let called = read_one_frame(&mut reader);
     assert_eq!(called["result"]["isError"], json!(true));
     let text = called["result"]["content"][0]["text"].as_str().unwrap();
