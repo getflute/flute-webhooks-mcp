@@ -32,3 +32,8 @@ pretty_assertions = "1"
 tempfile = "3"
 assert_cmd = "2"
 serde_json = "1"
+
+# The profile that 'dist' will build with
+[profile.dist]
+inherits = "release"
+lto = "thin"
