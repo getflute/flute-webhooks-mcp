@@ -8,6 +8,21 @@ The server spawns `flute-webhook --output json …` once per tool call, parses t
 
 ## Install
 
+Pick whichever installer matches your platform — each one drops a `flute-webhooks-mcp` binary on your `PATH`.
+
+```bash
+# macOS / Linux (curl + sh)
+curl -LsSf https://github.com/getflute/flute-webhooks-mcp/releases/latest/download/flute-webhooks-mcp-installer.sh | sh
+
+# macOS / Linux (Homebrew — this repo serves as its own tap)
+brew install getflute/flute-webhooks-mcp/flute-webhooks-mcp
+
+# Windows (PowerShell)
+irm https://github.com/getflute/flute-webhooks-mcp/releases/latest/download/flute-webhooks-mcp-installer.ps1 | iex
+```
+
+Or, to build from source:
+
 ```bash
 cargo install --path .
 ```
