@@ -4,6 +4,8 @@ version = "0.1.0"
 edition = "2024"
 description = "MCP server that drives the flute-webhook CLI"
 license = "MIT"
+repository = "https://github.com/getflute/flute-webhooks-mcp"
+homepage = "https://github.com/getflute/flute-webhooks-mcp"
 
 [[bin]]
 name = "flute-webhooks-mcp"
