@@ -4,6 +4,8 @@ version = "0.1.0"
 edition = "2024"
 description = "MCP server that drives the flute-webhook CLI"
 license = "MIT"
+repository = "https://github.com/getflute/flute-webhooks-mcp"
+homepage = "https://github.com/getflute/flute-webhooks-mcp"
 
 [[bin]]
 name = "flute-webhooks-mcp"
@@ -32,3 +34,8 @@ pretty_assertions = "1"
 tempfile = "3"
 assert_cmd = "2"
 serde_json = "1"
+
+# The profile that 'dist' will build with
+[profile.dist]
+inherits = "release"
+lto = "thin"
