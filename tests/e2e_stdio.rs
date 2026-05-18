@@ -7,7 +7,7 @@ use serde_json::{Value, json};
 use tempfile::TempDir;
 
 fn write_fake_flute(dir: &TempDir, stdout: &str, exit_code: i32) -> std::path::PathBuf {
-    let path = dir.path().join("flute-webhook");
+    let path = dir.path().join("flute-webhooks-cli");
     let script = format!(
         "#!/bin/sh\ncat >/dev/null\nprintf '%s' '{}'\nexit {}\n",
         stdout.replace('\'', "'\\''"),
@@ -44,7 +44,7 @@ fn lists_tools_and_calls_endpoints_list_through_stdio() {
 
     let bin = assert_cmd::cargo::cargo_bin("flute-webhooks-mcp");
     let mut child = Command::new(bin)
-        .env("FLUTE_WEBHOOK_BIN", &fake)
+        .env("FLUTE_WEBHOOKS_CLI_BIN", &fake)
         .env("FLUTE_PROFILE", "uat")
         .env("RUST_LOG", "warn")
         .stdin(Stdio::piped())
@@ -144,7 +144,7 @@ fn auth_error_surfaces_as_is_error() {
     );
     let bin = assert_cmd::cargo::cargo_bin("flute-webhooks-mcp");
     let mut child = Command::new(bin)
-        .env("FLUTE_WEBHOOK_BIN", &fake)
+        .env("FLUTE_WEBHOOKS_CLI_BIN", &fake)
         .env("FLUTE_PROFILE", "uat")
         .env("RUST_LOG", "warn")
         .stdin(Stdio::piped())

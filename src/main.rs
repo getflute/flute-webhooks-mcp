@@ -12,14 +12,14 @@ use tracing_subscriber::EnvFilter;
 #[derive(Debug, Parser)]
 #[command(
     name = "flute-webhooks-mcp",
-    about = "MCP server for the flute-webhook CLI"
+    about = "MCP server for the flute-webhooks-cli CLI"
 )]
 struct Args {
     /// Override `FLUTE_PROFILE` (uat | production).
     #[arg(long, env = "FLUTE_PROFILE")]
     profile: Option<String>,
-    /// Override `FLUTE_WEBHOOK_BIN`.
-    #[arg(long, env = "FLUTE_WEBHOOK_BIN")]
+    /// Override `FLUTE_WEBHOOKS_CLI_BIN`.
+    #[arg(long, env = "FLUTE_WEBHOOKS_CLI_BIN")]
     binary: Option<String>,
 }
 
@@ -35,7 +35,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args = Args::parse();
     let cfg = Config::from_env(|name| match name {
         "FLUTE_PROFILE" => args.profile.clone().or_else(|| std::env::var(name).ok()),
-        "FLUTE_WEBHOOK_BIN" => args.binary.clone().or_else(|| std::env::var(name).ok()),
+        "FLUTE_WEBHOOKS_CLI_BIN" => args.binary.clone().or_else(|| std::env::var(name).ok()),
         other => std::env::var(other).ok(),
     });
 
@@ -43,8 +43,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         Ok(c) => c,
         Err(ConfigError::BinaryNotFound) => {
             eprintln!(
-                "flute-webhooks-mcp: could not find `flute-webhook` on PATH. \
-                       Install it from https://github.com/getflute/flute-webhooks or set FLUTE_WEBHOOK_BIN."
+                "flute-webhooks-mcp: could not find `flute-webhooks-cli` on PATH. \
+                       Install it from https://github.com/getflute/flute-webhooks-cli or set FLUTE_WEBHOOKS_CLI_BIN."
             );
             std::process::exit(2);
         }

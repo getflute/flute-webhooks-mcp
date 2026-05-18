@@ -84,7 +84,7 @@ impl CliRunner for ProcessRunner {
         let stderr = String::from_utf8_lossy(&output.stderr).to_string();
 
         if self.debug && !stderr.is_empty() {
-            tracing::debug!(target: "flute_webhooks_mcp::runner", "flute-webhook stderr: {}", stderr);
+            tracing::debug!(target: "flute_webhooks_mcp::runner", "flute-webhooks-cli stderr: {}", stderr);
         }
 
         let exit_code = output.status.code().unwrap_or(-1);
