@@ -1,10 +1,10 @@
 # flute-webhooks-mcp
 
-An MCP (Model Context Protocol) server that lets an AI agent drive Aurora's `flute-webhook` CLI.
+An MCP (Model Context Protocol) server that lets an AI agent drive Aurora's `flute-webhooks-cli` CLI.
 
 ## How it works
 
-The server spawns `flute-webhook --output json …` once per tool call, parses the structured stdout, and surfaces both successes and the upstream CLI's `{kind, message, status?, correlation_id?}` error envelope through MCP. Auth lives in the OS keychain on the operator's machine; this server never touches credentials directly.
+The server spawns `flute-webhooks-cli --output json …` once per tool call, parses the structured stdout, and surfaces both successes and the upstream CLI's `{kind, message, status?, correlation_id?}` error envelope through MCP. Auth lives in the OS keychain on the operator's machine; this server never touches credentials directly.
 
 ## Install
 
@@ -27,7 +27,7 @@ Or, to build from source:
 cargo install --path .
 ```
 
-Prereq: install `flute-webhook` first (see [getflute/flute-webhooks](https://github.com/getflute/flute-webhooks)) and run `flute-webhook auth login` once per profile you'll use.
+Prereq: install `flute-webhooks-cli` first (see [getflute/flute-webhooks-cli](https://github.com/getflute/flute-webhooks-cli)) and run `flute-webhooks-cli auth login` once per profile you'll use.
 
 ## Run
 
@@ -42,9 +42,9 @@ Start one server instance per environment (`uat` vs `production`) — the profil
 | Variable | Default | Purpose |
 |---|---|---|
 | `FLUTE_PROFILE` | `uat` | `uat` or `production` (alias `prod`). Pinned at startup. |
-| `FLUTE_WEBHOOK_BIN` | resolved on `PATH` | Override the `flute-webhook` binary location. |
+| `FLUTE_WEBHOOKS_CLI_BIN` | resolved on `PATH` | Override the `flute-webhooks-cli` binary location. |
 | `FLUTE_MCP_TIMEOUT_SECS` | `30` | Per-call timeout for the child process. |
-| `FLUTE_MCP_DEBUG` | unset | When set to any non-empty value, route `flute-webhook` stderr to this server's tracing layer. |
+| `FLUTE_MCP_DEBUG` | unset | When set to any non-empty value, route `flute-webhooks-cli` stderr to this server's tracing layer. |
 | `RUST_LOG` | `info` | Standard `tracing` filter. Logs go to *stderr* only. |
 
 ## Claude Desktop config
@@ -86,7 +86,7 @@ Excluded by design: the upstream `tui`, `auth login` (interactive), `listen` (lo
 
 Every tool returns either a success result or `isError: true` with a structured JSON content item containing at minimum a `kind` field — one of `api`, `transport`, `auth`, `decode`, `client`, `spawn`, `timeout`, `bad_output`. `api` errors also carry `status` and (where the server provided one) `correlation_id`.
 
-For an agent: branch on `kind` first. `transport` and `api` with status ∈ {500,502,503,504} are safe to retry with backoff. `auth` means run `flute-webhook auth login` on the operator's machine.
+For an agent: branch on `kind` first. `transport` and `api` with status ∈ {500,502,503,504} are safe to retry with backoff. `auth` means run `flute-webhooks-cli auth login` on the operator's machine.
 
 ## License
 
