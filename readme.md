@@ -35,13 +35,13 @@ Prereq: install `flute-webhooks-cli` first (see [getflute/flute-webhooks-cli](ht
 flute-webhooks-mcp        # talks JSON-RPC over stdio
 ```
 
-Start one server instance per environment (`uat` vs `production`) — the profile is **pinned at startup**.
+Start one server instance per environment (`sandbox` vs `production`) — the profile is **pinned at startup**.
 
 ## Environment variables
 
 | Variable | Default | Purpose |
 |---|---|---|
-| `FLUTE_PROFILE` | `uat` | `uat` or `production` (alias `prod`). Pinned at startup. |
+| `FLUTE_PROFILE` | `sandbox` | `sandbox` or `production` (alias `prod`). Pinned at startup. |
 | `FLUTE_WEBHOOKS_CLI_BIN` | resolved on `PATH` | Override the `flute-webhooks-cli` binary location. |
 | `FLUTE_MCP_TIMEOUT_SECS` | `30` | Per-call timeout for the child process. |
 | `FLUTE_MCP_DEBUG` | unset | When set to any non-empty value, route `flute-webhooks-cli` stderr to this server's tracing layer. |
@@ -52,9 +52,9 @@ Start one server instance per environment (`uat` vs `production`) — the profil
 ```jsonc
 {
   "mcpServers": {
-    "flute-webhooks-uat": {
+    "flute-webhooks-sandbox": {
       "command": "flute-webhooks-mcp",
-      "env": { "FLUTE_PROFILE": "uat" }
+      "env": { "FLUTE_PROFILE": "sandbox" }
     },
     "flute-webhooks-prod": {
       "command": "flute-webhooks-mcp",

@@ -45,7 +45,7 @@ fn lists_tools_and_calls_endpoints_list_through_stdio() {
     let bin = assert_cmd::cargo::cargo_bin("flute-webhooks-mcp");
     let mut child = Command::new(bin)
         .env("FLUTE_WEBHOOKS_CLI_BIN", &fake)
-        .env("FLUTE_PROFILE", "uat")
+        .env("FLUTE_PROFILE", "sandbox")
         .env("RUST_LOG", "warn")
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
@@ -139,13 +139,13 @@ fn auth_error_surfaces_as_is_error() {
     let dir = TempDir::new().unwrap();
     let fake = write_fake_flute(
         &dir,
-        r#"{"kind":"auth","message":"no credentials for [uat]"}"#,
+        r#"{"kind":"auth","message":"no credentials for [sandbox]"}"#,
         1,
     );
     let bin = assert_cmd::cargo::cargo_bin("flute-webhooks-mcp");
     let mut child = Command::new(bin)
         .env("FLUTE_WEBHOOKS_CLI_BIN", &fake)
-        .env("FLUTE_PROFILE", "uat")
+        .env("FLUTE_PROFILE", "sandbox")
         .env("RUST_LOG", "warn")
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())

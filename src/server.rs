@@ -369,7 +369,7 @@ impl ServerHandler for FluteServer {
     fn get_info(&self) -> ServerInfo {
         ServerInfo::default().with_instructions(
             "Drives the `flute-webhooks-cli` CLI. The active profile is pinned at server start; \
-             launch one instance per environment (uat vs production). Credentials are read \
+             launch one instance per environment (sandbox vs production). Credentials are read \
              from the OS keychain via `flute-webhooks-cli auth login` — run that first.",
         )
     }
