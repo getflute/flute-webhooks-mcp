@@ -5,14 +5,14 @@ use thiserror::Error;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Profile {
-    Uat,
+    Sandbox,
     Production,
 }
 
 impl Profile {
     pub fn as_cli_str(self) -> &'static str {
         match self {
-            Profile::Uat => "uat",
+            Profile::Sandbox => "sandbox",
             Profile::Production => "production",
         }
     }
@@ -20,7 +20,7 @@ impl Profile {
 
 #[derive(Debug, Error)]
 pub enum ConfigError {
-    #[error("invalid FLUTE_PROFILE value `{0}` (expected `uat` or `production`)")]
+    #[error("invalid FLUTE_PROFILE value `{0}` (expected `sandbox` or `production`)")]
     InvalidProfile(String),
     #[error("invalid FLUTE_MCP_TIMEOUT_SECS value `{0}` (expected positive integer)")]
     InvalidTimeout(String),
@@ -45,7 +45,7 @@ impl Config {
         F: Fn(&str) -> Option<String>,
     {
         let profile = match getenv("FLUTE_PROFILE").as_deref() {
-            None | Some("") | Some("uat") => Profile::Uat,
+            None | Some("") | Some("sandbox") => Profile::Sandbox,
             Some("production") | Some("prod") => Profile::Production,
             Some(other) => return Err(ConfigError::InvalidProfile(other.to_string())),
         };
@@ -110,13 +110,13 @@ mod tests {
     }
 
     #[test]
-    fn defaults_to_uat_and_30s() {
+    fn defaults_to_sandbox_and_30s() {
         let dir = TempDir::new().unwrap();
         let bin = fake_binary(&dir, "flute-webhooks-cli");
         let pairs = [("FLUTE_WEBHOOKS_CLI_BIN", bin.to_str().unwrap())];
         let env = make_env(&pairs);
         let cfg = Config::from_env(env).unwrap();
-        assert_eq!(cfg.profile, Profile::Uat);
+        assert_eq!(cfg.profile, Profile::Sandbox);
         assert_eq!(cfg.timeout, Duration::from_secs(30));
         assert!(!cfg.debug);
     }

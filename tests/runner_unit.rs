@@ -35,7 +35,7 @@ async fn success_returns_parsed_json() {
     );
     let runner = runner_for(bin, 5_000);
     let out = runner
-        .run(&["--profile".into(), "uat".into()])
+        .run(&["--profile".into(), "sandbox".into()])
         .await
         .unwrap();
     assert_eq!(out, json!({"data":[{"id":"e1"}]}));
@@ -78,7 +78,7 @@ async fn auth_envelope_failure_is_mapped() {
     let dir = TempDir::new().unwrap();
     let bin = write_script(
         &dir,
-        "#!/bin/sh\nprintf '%s' '{\"kind\":\"auth\",\"message\":\"no credentials for [uat]\"}'\nexit 1\n",
+        "#!/bin/sh\nprintf '%s' '{\"kind\":\"auth\",\"message\":\"no credentials for [sandbox]\"}'\nexit 1\n",
     );
     let runner = runner_for(bin, 5_000);
     let err = runner.run(&[]).await.unwrap_err();

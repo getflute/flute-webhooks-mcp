@@ -13,7 +13,7 @@ use std::time::Duration;
 
 fn cfg() -> Arc<Config> {
     Arc::new(Config {
-        profile: Profile::Uat,
+        profile: Profile::Sandbox,
         binary: PathBuf::from("/dev/null"),
         timeout: Duration::from_secs(5),
         debug: false,
@@ -31,7 +31,7 @@ async fn endpoints_list_argv_matches_agents_md_spec() {
         mock.calls(),
         vec![vec![
             "--profile".to_string(),
-            "uat".into(),
+            "sandbox".into(),
             "--output".into(),
             "json".into(),
             "webhooks".into(),
@@ -55,7 +55,7 @@ async fn endpoints_get_argv() {
         mock.calls()[0],
         vec![
             "--profile",
-            "uat",
+            "sandbox",
             "--output",
             "json",
             "webhooks",
@@ -85,7 +85,7 @@ async fn endpoints_create_argv_with_name() {
         mock.calls()[0],
         vec![
             "--profile",
-            "uat",
+            "sandbox",
             "--output",
             "json",
             "webhooks",
@@ -119,7 +119,7 @@ async fn endpoints_update_only_includes_set_fields() {
         mock.calls()[0],
         vec![
             "--profile",
-            "uat",
+            "sandbox",
             "--output",
             "json",
             "webhooks",
@@ -144,7 +144,7 @@ async fn endpoints_delete_synthesizes_result() {
         mock.calls()[0],
         vec![
             "--profile",
-            "uat",
+            "sandbox",
             "--output",
             "json",
             "webhooks",
@@ -169,7 +169,7 @@ async fn endpoints_delete_synthesizes_result() {
 async fn auth_error_pass_through_is_error() {
     use flute_webhooks_mcp::error::FluteError;
     let mock = MockRunner::new(vec![Err(FluteError::Auth {
-        message: "no credentials for [uat]".into(),
+        message: "no credentials for [sandbox]".into(),
     })]);
     let server = FluteServer::new(cfg(), mock.clone());
     let result = server.endpoints_list(Parameters(Empty {})).await.unwrap();
@@ -197,7 +197,7 @@ async fn event_types_list_argv() {
         mock.calls()[0],
         vec![
             "--profile",
-            "uat",
+            "sandbox",
             "--output",
             "json",
             "webhooks",
@@ -223,7 +223,7 @@ async fn deliveries_list_no_filters() {
         mock.calls()[0],
         vec![
             "--profile",
-            "uat",
+            "sandbox",
             "--output",
             "json",
             "webhooks",
@@ -249,7 +249,7 @@ async fn deliveries_list_all_filters() {
         mock.calls()[0],
         vec![
             "--profile",
-            "uat",
+            "sandbox",
             "--output",
             "json",
             "webhooks",
@@ -277,7 +277,7 @@ async fn deliveries_get_argv() {
         mock.calls()[0],
         vec![
             "--profile",
-            "uat",
+            "sandbox",
             "--output",
             "json",
             "webhooks",
@@ -300,7 +300,7 @@ async fn deliveries_retry_argv() {
         mock.calls()[0],
         vec![
             "--profile",
-            "uat",
+            "sandbox",
             "--output",
             "json",
             "webhooks",
@@ -329,14 +329,14 @@ async fn auth_status_reports_authenticated_when_decode_ok() {
         .text
         .as_str();
     assert!(json.contains("\"authenticated\":true"), "got {json}");
-    assert!(json.contains("\"uat\""), "got {json}");
+    assert!(json.contains("\"sandbox\""), "got {json}");
 }
 
 #[tokio::test]
 async fn auth_status_reports_unauth_on_kind_auth() {
     use flute_webhooks_mcp::error::FluteError;
     let mock = MockRunner::new(vec![Err(FluteError::Auth {
-        message: "no credentials for [uat]".into(),
+        message: "no credentials for [sandbox]".into(),
     })]);
     let server = FluteServer::new(cfg(), mock.clone());
     let result = server.auth_status(Parameters(Empty {})).await.unwrap();
@@ -365,7 +365,7 @@ async fn endpoints_ping_argv() {
         mock.calls()[0],
         vec![
             "--profile",
-            "uat",
+            "sandbox",
             "--output",
             "json",
             "webhooks",
@@ -385,6 +385,6 @@ async fn auth_status_argv() {
     server.auth_status(Parameters(Empty {})).await.unwrap();
     assert_eq!(
         mock.calls()[0],
-        vec!["--profile", "uat", "--output", "json", "auth", "token",]
+        vec!["--profile", "sandbox", "--output", "json", "auth", "token",]
     );
 }

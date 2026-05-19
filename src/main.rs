@@ -15,7 +15,7 @@ use tracing_subscriber::EnvFilter;
     about = "MCP server for the flute-webhooks-cli CLI"
 )]
 struct Args {
-    /// Override `FLUTE_PROFILE` (uat | production).
+    /// Override `FLUTE_PROFILE` (sandbox | production).
     #[arg(long, env = "FLUTE_PROFILE")]
     profile: Option<String>,
     /// Override `FLUTE_WEBHOOKS_CLI_BIN`.
