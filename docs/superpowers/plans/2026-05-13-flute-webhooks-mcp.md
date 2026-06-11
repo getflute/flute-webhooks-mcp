@@ -13,7 +13,7 @@
 **Pre-flight (engineer reads once before starting):**
 - The upstream binary is named `flute-webhook` (singular) and lives in a private repo; the contract we depend on is documented in its `AGENTS.md`.
 - Every non-TUI subcommand accepts `--output json`. On success it prints JSON to stdout, exit 0. On failure it prints `{"kind":..., "message":..., "status"?:..., "correlation_id"?:...}` to stdout and exits non-zero. stderr is human-readable tracing.
-- Global flags work *before* the subcommand: `--profile <uat|production> --output json …`.
+- Global flags work *before* the subcommand: `--profile <sandbox|production> --output json …`.
 - `endpoints delete` requires `--yes` and emits empty stdout on success; we synthesize a result.
 - rmcp 1.7 macros: `#[tool(description = "…")]` on async methods, `#[tool_router]` on the impl block, `#[tool_handler]` on `impl ServerHandler`. Inputs use `Parameters<T>` where `T: serde::Deserialize + schemars::JsonSchema`.
 
@@ -300,14 +300,14 @@ use thiserror::Error;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Profile {
-    Uat,
+    Sandbox,
     Production,
 }
 
 impl Profile {
     pub fn as_cli_str(self) -> &'static str {
         match self {
-            Profile::Uat => "uat",
+            Profile::Sandbox => "sandbox",
             Profile::Production => "production",
         }
     }
@@ -315,7 +315,7 @@ impl Profile {
 
 #[derive(Debug, Error)]
 pub enum ConfigError {
-    #[error("invalid FLUTE_PROFILE value `{0}` (expected `uat` or `production`)")]
+    #[error("invalid FLUTE_PROFILE value `{0}` (expected `sandbox` or `production`)")]
     InvalidProfile(String),
     #[error("invalid FLUTE_MCP_TIMEOUT_SECS value `{0}` (expected positive integer)")]
     InvalidTimeout(String),
@@ -340,7 +340,7 @@ impl Config {
         F: Fn(&str) -> Option<String>,
     {
         let profile = match getenv("FLUTE_PROFILE").as_deref() {
-            None | Some("") | Some("uat") => Profile::Uat,
+            None | Some("") | Some("sandbox") => Profile::Sandbox,
             Some("production") | Some("prod") => Profile::Production,
             Some(other) => return Err(ConfigError::InvalidProfile(other.to_string())),
         };
@@ -398,12 +398,12 @@ mod tests {
     }
 
     #[test]
-    fn defaults_to_uat_and_30s() {
+    fn defaults_to_sandbox_and_30s() {
         let dir = TempDir::new().unwrap();
         let bin = fake_binary(&dir, "flute-webhook");
         let env = make_env(&[("FLUTE_WEBHOOK_BIN", bin.to_str().unwrap())]);
         let cfg = Config::from_env(env).unwrap();
-        assert_eq!(cfg.profile, Profile::Uat);
+        assert_eq!(cfg.profile, Profile::Sandbox);
         assert_eq!(cfg.timeout, Duration::from_secs(30));
         assert!(!cfg.debug);
     }
@@ -664,7 +664,7 @@ async fn success_returns_parsed_json() {
         "#!/bin/sh\nprintf '%s' '{\"data\":[{\"id\":\"e1\"}]}'\n",
     );
     let runner = runner_for(bin, 5_000);
-    let out = runner.run(&["--profile".into(), "uat".into()]).await.unwrap();
+    let out = runner.run(&["--profile".into(), "sandbox".into()]).await.unwrap();
     assert_eq!(out, json!({"data":[{"id":"e1"}]}));
 }
 
@@ -726,7 +726,7 @@ async fn auth_envelope_failure_is_mapped() {
     let dir = TempDir::new().unwrap();
     let bin = write_script(
         &dir,
-        "#!/bin/sh\nprintf '%s' '{\"kind\":\"auth\",\"message\":\"no credentials for [uat]\"}'\nexit 1\n",
+        "#!/bin/sh\nprintf '%s' '{\"kind\":\"auth\",\"message\":\"no credentials for [sandbox]\"}'\nexit 1\n",
     );
     let runner = runner_for(bin, 5_000);
     let err = runner.run(&[]).await.unwrap_err();
@@ -942,7 +942,7 @@ impl ServerHandler for FluteServer {
         ServerInfo {
             instructions: Some(
                 "Drives the `flute-webhook` CLI. The active profile is pinned at server start; \
-                 launch one instance per environment (uat vs production). Credentials are read \
+                 launch one instance per environment (sandbox vs production). Credentials are read \
                  from the OS keychain via `flute-webhook auth login` — run that first."
                     .into(),
             ),
@@ -969,7 +969,7 @@ use std::time::Duration;
 
 fn cfg() -> Arc<Config> {
     Arc::new(Config {
-        profile: Profile::Uat,
+        profile: Profile::Sandbox,
         binary: PathBuf::from("/dev/null"),  // ignored — MockRunner doesn't spawn
         timeout: Duration::from_secs(5),
         debug: false,
@@ -989,7 +989,7 @@ async fn endpoints_list_argv_matches_agents_md_spec() {
         mock.calls(),
         vec![vec![
             "--profile".to_string(),
-            "uat".into(),
+            "sandbox".into(),
             "--output".into(),
             "json".into(),
             "webhooks".into(),
@@ -1157,7 +1157,7 @@ async fn endpoints_get_argv() {
     let server = FluteServer::new(cfg(), mock.clone());
     server.endpoints_get(Parameters(EndpointId { id: "e1".into() })).await.unwrap();
     assert_eq!(mock.calls()[0], vec![
-        "--profile", "uat", "--output", "json",
+        "--profile", "sandbox", "--output", "json",
         "webhooks", "endpoints", "get", "e1",
     ]);
 }
@@ -1172,7 +1172,7 @@ async fn endpoints_create_argv_with_name() {
         name: Some("My Hook".into()),
     })).await.unwrap();
     assert_eq!(mock.calls()[0], vec![
-        "--profile", "uat", "--output", "json",
+        "--profile", "sandbox", "--output", "json",
         "webhooks", "endpoints", "create",
         "--url", "https://x.example/hook",
         "--events", "transaction.card.captured,refund.completed",
@@ -1192,7 +1192,7 @@ async fn endpoints_update_only_includes_set_fields() {
         status: Some("inactive".into()),
     })).await.unwrap();
     assert_eq!(mock.calls()[0], vec![
-        "--profile", "uat", "--output", "json",
+        "--profile", "sandbox", "--output", "json",
         "webhooks", "endpoints", "update", "e1",
         "--status", "inactive",
     ]);
@@ -1204,7 +1204,7 @@ async fn endpoints_delete_synthesizes_result() {
     let server = FluteServer::new(cfg(), mock.clone());
     let result = server.endpoints_delete(Parameters(EndpointId { id: "e1".into() })).await.unwrap();
     assert_eq!(mock.calls()[0], vec![
-        "--profile", "uat", "--output", "json",
+        "--profile", "sandbox", "--output", "json",
         "webhooks", "endpoints", "delete", "e1", "--yes",
     ]);
     // Result content should contain `{"deleted": true, "id": "e1"}` — verify via the
@@ -1220,7 +1220,7 @@ async fn endpoints_delete_synthesizes_result() {
 async fn auth_error_pass_through_is_isError() {
     use flute_webhooks_mcp::error::FluteError;
     let mock = MockRunner::new(vec![Err(FluteError::Auth {
-        message: "no credentials for [uat]".into(),
+        message: "no credentials for [sandbox]".into(),
     })]);
     let server = FluteServer::new(cfg(), mock.clone());
     let result = server.endpoints_list(Parameters(Empty {})).await.unwrap();
@@ -1283,7 +1283,7 @@ async fn event_types_list_argv() {
     let server = FluteServer::new(cfg(), mock.clone());
     server.event_types_list(Parameters(Empty {})).await.unwrap();
     assert_eq!(mock.calls()[0], vec![
-        "--profile", "uat", "--output", "json",
+        "--profile", "sandbox", "--output", "json",
         "webhooks", "event-types", "list",
     ]);
 }
@@ -1392,7 +1392,7 @@ async fn deliveries_list_no_filters() {
         endpoint_id: None, status: None, limit: None,
     })).await.unwrap();
     assert_eq!(mock.calls()[0], vec![
-        "--profile", "uat", "--output", "json",
+        "--profile", "sandbox", "--output", "json",
         "webhooks", "deliveries", "list",
     ]);
 }
@@ -1407,7 +1407,7 @@ async fn deliveries_list_all_filters() {
         limit: Some(10),
     })).await.unwrap();
     assert_eq!(mock.calls()[0], vec![
-        "--profile", "uat", "--output", "json",
+        "--profile", "sandbox", "--output", "json",
         "webhooks", "deliveries", "list",
         "--endpoint-id", "e1",
         "--status", "failed",
@@ -1421,7 +1421,7 @@ async fn deliveries_get_argv() {
     let server = FluteServer::new(cfg(), mock.clone());
     server.deliveries_get(Parameters(DeliveryId { id: "d1".into() })).await.unwrap();
     assert_eq!(mock.calls()[0], vec![
-        "--profile", "uat", "--output", "json",
+        "--profile", "sandbox", "--output", "json",
         "webhooks", "deliveries", "get", "d1",
     ]);
 }
@@ -1432,7 +1432,7 @@ async fn deliveries_retry_argv() {
     let server = FluteServer::new(cfg(), mock.clone());
     server.deliveries_retry(Parameters(DeliveryId { id: "d1".into() })).await.unwrap();
     assert_eq!(mock.calls()[0], vec![
-        "--profile", "uat", "--output", "json",
+        "--profile", "sandbox", "--output", "json",
         "webhooks", "deliveries", "retry", "d1",
     ]);
 }
@@ -1508,14 +1508,14 @@ async fn auth_status_reports_authenticated_when_decode_ok() {
     let first = content.first().expect("expected at least one content item");
     let json = first.as_text().expect("expected text content").text.as_str();
     assert!(json.contains("\"authenticated\":true"), "got {json}");
-    assert!(json.contains("\"uat\""), "got {json}");
+    assert!(json.contains("\"sandbox\""), "got {json}");
 }
 
 #[tokio::test]
 async fn auth_status_reports_unauth_on_kind_auth() {
     use flute_webhooks_mcp::error::FluteError;
     let mock = MockRunner::new(vec![Err(FluteError::Auth {
-        message: "no credentials for [uat]".into(),
+        message: "no credentials for [sandbox]".into(),
     })]);
     let server = FluteServer::new(cfg(), mock.clone());
     let result = server.auth_status(Parameters(Empty {})).await.unwrap();
@@ -1563,7 +1563,7 @@ use tracing_subscriber::EnvFilter;
 #[derive(Debug, Parser)]
 #[command(name = "flute-webhooks-mcp", about = "MCP server for the flute-webhook CLI")]
 struct Args {
-    /// Override `FLUTE_PROFILE` (uat | production).
+    /// Override `FLUTE_PROFILE` (sandbox | production).
     #[arg(long, env = "FLUTE_PROFILE")]
     profile: Option<String>,
     /// Override `FLUTE_WEBHOOK_BIN`.
@@ -1706,7 +1706,7 @@ fn lists_tools_and_calls_endpoints_list_through_stdio() {
     let bin = assert_cmd::cargo::cargo_bin("flute-webhooks-mcp");
     let mut child = Command::new(bin)
         .env("FLUTE_WEBHOOK_BIN", &fake)
-        .env("FLUTE_PROFILE", "uat")
+        .env("FLUTE_PROFILE", "sandbox")
         .env("RUST_LOG", "warn")
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
@@ -1769,13 +1769,13 @@ fn auth_error_surfaces_as_is_error() {
     let dir = TempDir::new().unwrap();
     let fake = write_fake_flute(
         &dir,
-        r#"{"kind":"auth","message":"no credentials for [uat]"}"#,
+        r#"{"kind":"auth","message":"no credentials for [sandbox]"}"#,
         1,
     );
     let bin = assert_cmd::cargo::cargo_bin("flute-webhooks-mcp");
     let mut child = Command::new(bin)
         .env("FLUTE_WEBHOOK_BIN", &fake)
-        .env("FLUTE_PROFILE", "uat")
+        .env("FLUTE_PROFILE", "sandbox")
         .env("RUST_LOG", "warn")
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
@@ -1853,13 +1853,13 @@ Prereq: install `flute-webhook` first (see [getflute/flute-webhooks](https://git
 flute-webhooks-mcp        # talks JSON-RPC over stdio
 ```
 
-Start one server instance per environment (`uat` vs `production`) — the profile is **pinned at startup**.
+Start one server instance per environment (`sandbox` vs `production`) — the profile is **pinned at startup**.
 
 ## Environment variables
 
 | Variable | Default | Purpose |
 |---|---|---|
-| `FLUTE_PROFILE` | `uat` | `uat` or `production` (alias `prod`). Pinned at startup. |
+| `FLUTE_PROFILE` | `sandbox` | `sandbox` or `production` (alias `prod`). Pinned at startup. |
 | `FLUTE_WEBHOOK_BIN` | resolved on `PATH` | Override the `flute-webhook` binary location. |
 | `FLUTE_MCP_TIMEOUT_SECS` | `30` | Per-call timeout for the child process. |
 | `FLUTE_MCP_DEBUG` | unset | When set to any non-empty value, route `flute-webhook` stderr to this server's tracing layer. |
@@ -1870,9 +1870,9 @@ Start one server instance per environment (`uat` vs `production`) — the profil
 ```jsonc
 {
   "mcpServers": {
-    "flute-webhooks-uat": {
+    "flute-webhooks-sandbox": {
       "command": "flute-webhooks-mcp",
-      "env": { "FLUTE_PROFILE": "uat" }
+      "env": { "FLUTE_PROFILE": "sandbox" }
     },
     "flute-webhooks-prod": {
       "command": "flute-webhooks-mcp",
