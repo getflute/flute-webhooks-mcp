@@ -25,7 +25,7 @@ façade in front of it.
   `listen` forwarder, or the `update` subcommand. Those have no JSON
   surface or can't be driven non-interactively.
 - Supporting transports other than stdio.
-- Mixing UAT and production in one process.
+- Mixing sandbox and production in one process.
 
 ## Key decisions (from brainstorm)
 
@@ -34,7 +34,7 @@ façade in front of it.
 | Tool scope | Agent-safe subset only (no `tui`, `auth login`, `listen`, `update`). |
 | Transport | stdio only. |
 | Credentials | Assume operator has run `flute-webhook auth login`; surface `kind:"auth"` errors as structured tool errors. |
-| Profile | Pinned at server start via `FLUTE_PROFILE` (default `uat`). One server instance per environment. |
+| Profile | Pinned at server start via `FLUTE_PROFILE` (default `sandbox`). One server instance per environment. |
 | CLI invocation | One `flute-webhook` child process per tool call via `tokio::process::Command`. |
 
 ## Architecture
@@ -59,7 +59,7 @@ flute-webhooks-mcp  (single Rust binary, stdio MCP)
 - **`main.rs`** wires tracing → stderr, loads `Config` from env, builds
   `CliRunner`, hands to rmcp stdio server, runs until stdin closes.
 - **`config.rs`** holds `Config { profile, binary, timeout }`.
-  - `FLUTE_PROFILE` (default `uat`)
+  - `FLUTE_PROFILE` (default `sandbox`)
   - `FLUTE_WEBHOOK_BIN` (default `which("flute-webhook")`; hard error at
     startup if neither resolves)
   - `FLUTE_MCP_TIMEOUT_SECS` (default `30`)
@@ -96,7 +96,7 @@ structured error (see Error handling).
 | `deliveries_list` | `webhooks deliveries list …` | `{ endpoint_id?: string, status?: "success"\|"failed", limit?: integer 1–200 (default 50) }` | `ListDeliveryLogsDto` |
 | `deliveries_get` | `webhooks deliveries get <id>` | `{ id: string }` | `DeliveryLogDetailDto` |
 | `deliveries_retry` | `webhooks deliveries retry <id>` | `{ id: string }` | `DeliveryLogSummaryDto` |
-| `auth_status` | `auth token` | `{}` | `{ authenticated: bool, profile: "uat"\|"production", expires_at?: string }` |
+| `auth_status` | `auth token` | `{}` | `{ authenticated: bool, profile: "sandbox"\|"production", expires_at?: string }` |
 
 Idempotency hints (from AGENTS.md) live in each tool's `description`
 field. `endpoints_create` and `deliveries_retry` get prominent
@@ -117,7 +117,7 @@ agent → MCP rmcp server
     │
     ▼
 tool handler builds argv:
-  ["--profile", "uat", "--output", "json", "webhooks", "endpoints", "list"]
+  ["--profile", "sandbox", "--output", "json", "webhooks", "endpoints", "list"]
     │
     ▼
 CliRunner::run(argv)
@@ -247,7 +247,7 @@ be flaky in CI).
 1. `cargo build --release` produces a single `flute-webhooks-mcp` binary.
 2. `cargo test` green across all three layers; `cargo clippy --all-targets --no-deps -D warnings` clean; `cargo fmt --check` clean.
 3. With `flute-webhook` installed and `flute-webhook auth login` already
-   run for `uat`, configuring an MCP client (e.g. Claude Desktop) with
+   run for `sandbox`, configuring an MCP client (e.g. Claude Desktop) with
    `{ command: "flute-webhooks-mcp" }` exposes the eleven tools and
    `endpoints_list` returns real JSON.
 4. With **no** credentials in the keychain, `endpoints_list` returns
