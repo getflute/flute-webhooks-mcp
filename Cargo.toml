@@ -1,8 +1,8 @@
 [package]
 name = "flute-webhooks-mcp"
-version = "0.3.1"
+version = "0.4.0"
 edition = "2024"
-description = "MCP server that drives the flute-webhooks-cli CLI"
+description = "MCP server that drives the flute-webhooks CLI"
 license = "MIT"
 repository = "https://github.com/getflute/flute-webhooks-mcp"
 homepage = "https://github.com/getflute/flute-webhooks-mcp"
