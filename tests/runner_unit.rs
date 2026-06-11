@@ -10,7 +10,7 @@ use serde_json::json;
 use tempfile::TempDir;
 
 fn write_script(dir: &TempDir, body: &str) -> PathBuf {
-    let path = dir.path().join("flute-webhooks-cli");
+    let path = dir.path().join("flute-webhooks");
     fs::write(&path, body).unwrap();
     let mut perms = fs::metadata(&path).unwrap().permissions();
     perms.set_mode(0o755);

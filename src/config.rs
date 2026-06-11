@@ -24,9 +24,9 @@ pub enum ConfigError {
     InvalidProfile(String),
     #[error("invalid FLUTE_MCP_TIMEOUT_SECS value `{0}` (expected positive integer)")]
     InvalidTimeout(String),
-    #[error("could not locate `flute-webhooks-cli` on PATH and FLUTE_WEBHOOKS_CLI_BIN is unset")]
+    #[error("could not locate `flute-webhooks` on PATH and FLUTE_WEBHOOKS_BIN is unset")]
     BinaryNotFound,
-    #[error("FLUTE_WEBHOOKS_CLI_BIN=`{0}` does not exist or is not executable")]
+    #[error("FLUTE_WEBHOOKS_BIN=`{0}` does not exist or is not executable")]
     BinaryUnusable(String),
 }
 
@@ -63,7 +63,7 @@ impl Config {
             }
         };
 
-        let binary = match getenv("FLUTE_WEBHOOKS_CLI_BIN") {
+        let binary = match getenv("FLUTE_WEBHOOKS_BIN") {
             Some(p) if !p.is_empty() => {
                 let path = PathBuf::from(&p);
                 if !path.is_file() {
@@ -71,7 +71,7 @@ impl Config {
                 }
                 path
             }
-            _ => which::which("flute-webhooks-cli").map_err(|_| ConfigError::BinaryNotFound)?,
+            _ => which::which("flute-webhooks").map_err(|_| ConfigError::BinaryNotFound)?,
         };
 
         let debug = matches!(getenv("FLUTE_MCP_DEBUG").as_deref(), Some(v) if !v.is_empty());
@@ -112,8 +112,8 @@ mod tests {
     #[test]
     fn defaults_to_sandbox_and_30s() {
         let dir = TempDir::new().unwrap();
-        let bin = fake_binary(&dir, "flute-webhooks-cli");
-        let pairs = [("FLUTE_WEBHOOKS_CLI_BIN", bin.to_str().unwrap())];
+        let bin = fake_binary(&dir, "flute-webhooks");
+        let pairs = [("FLUTE_WEBHOOKS_BIN", bin.to_str().unwrap())];
         let env = make_env(&pairs);
         let cfg = Config::from_env(env).unwrap();
         assert_eq!(cfg.profile, Profile::Sandbox);
@@ -124,10 +124,10 @@ mod tests {
     #[test]
     fn accepts_production_and_prod_alias() {
         let dir = TempDir::new().unwrap();
-        let bin = fake_binary(&dir, "flute-webhooks-cli");
+        let bin = fake_binary(&dir, "flute-webhooks");
         for value in ["production", "prod"] {
             let pairs = [
-                ("FLUTE_WEBHOOKS_CLI_BIN", bin.to_str().unwrap()),
+                ("FLUTE_WEBHOOKS_BIN", bin.to_str().unwrap()),
                 ("FLUTE_PROFILE", value),
             ];
             let env = make_env(&pairs);
@@ -139,9 +139,9 @@ mod tests {
     #[test]
     fn rejects_unknown_profile() {
         let dir = TempDir::new().unwrap();
-        let bin = fake_binary(&dir, "flute-webhooks-cli");
+        let bin = fake_binary(&dir, "flute-webhooks");
         let pairs = [
-            ("FLUTE_WEBHOOKS_CLI_BIN", bin.to_str().unwrap()),
+            ("FLUTE_WEBHOOKS_BIN", bin.to_str().unwrap()),
             ("FLUTE_PROFILE", "staging"),
         ];
         let env = make_env(&pairs);
@@ -153,7 +153,7 @@ mod tests {
 
     #[test]
     fn missing_binary_errors() {
-        let pairs = [("FLUTE_WEBHOOKS_CLI_BIN", "/nope/does/not/exist")];
+        let pairs = [("FLUTE_WEBHOOKS_BIN", "/nope/does/not/exist")];
         let env = make_env(&pairs);
         assert!(matches!(
             Config::from_env(env),

@@ -55,7 +55,7 @@ fn flute_err_to_result(err: FluteError) -> CallToolResult {
         }),
         FluteError::Auth { message } => serde_json::json!({
             "kind": "auth",
-            "message": format!("{message} — run `flute-webhooks-cli auth login`"),
+            "message": format!("{message} — run `flute-webhooks auth login`"),
         }),
         FluteError::Decode { message } => serde_json::json!({
             "kind": "decode", "message": message,
@@ -65,10 +65,10 @@ fn flute_err_to_result(err: FluteError) -> CallToolResult {
         }),
         FluteError::Spawn(msg) => serde_json::json!({
             "kind": "spawn",
-            "message": format!("could not spawn flute-webhooks-cli — set FLUTE_WEBHOOKS_CLI_BIN or install the CLI ({msg})"),
+            "message": format!("could not spawn flute-webhooks — set FLUTE_WEBHOOKS_BIN or install the CLI ({msg})"),
         }),
         FluteError::Timeout { secs } => serde_json::json!({
-            "kind": "timeout", "message": format!("flute-webhooks-cli timed out after {secs}s"),
+            "kind": "timeout", "message": format!("flute-webhooks timed out after {secs}s"),
         }),
         FluteError::BadOutput {
             exit_code,
@@ -356,7 +356,7 @@ impl FluteServer {
             }),
             Err(FluteError::Auth { .. }) => serde_json::json!({
                 "authenticated": false, "profile": profile,
-                "message": "Run `flute-webhooks-cli auth login` (optionally with --profile)",
+                "message": "Run `flute-webhooks auth login` (optionally with --profile)",
             }),
             Err(e) => return Ok(flute_err_to_result(e)),
         };
@@ -368,9 +368,9 @@ impl FluteServer {
 impl ServerHandler for FluteServer {
     fn get_info(&self) -> ServerInfo {
         ServerInfo::default().with_instructions(
-            "Drives the `flute-webhooks-cli` CLI. The active profile is pinned at server start; \
+            "Drives the `flute-webhooks` CLI. The active profile is pinned at server start; \
              launch one instance per environment (sandbox vs production). Credentials are read \
-             from the OS keychain via `flute-webhooks-cli auth login` — run that first.",
+             from the OS keychain via `flute-webhooks auth login` — run that first.",
         )
     }
 }

@@ -11,17 +11,17 @@ pub enum FluteError {
     },
     #[error("transport error: {message}")]
     Transport { message: String },
-    #[error("auth error: {message} — run `flute-webhooks-cli auth login`")]
+    #[error("auth error: {message} — run `flute-webhooks auth login`")]
     Auth { message: String },
     #[error("decode error: {message}")]
     Decode { message: String },
     #[error("cli usage error: {message}")]
     Client { message: String },
-    #[error("could not spawn flute-webhooks-cli: {0}")]
+    #[error("could not spawn flute-webhooks: {0}")]
     Spawn(String),
-    #[error("flute-webhooks-cli timed out after {secs}s")]
+    #[error("flute-webhooks timed out after {secs}s")]
     Timeout { secs: u64 },
-    #[error("flute-webhooks-cli produced unparseable output (exit {exit_code})")]
+    #[error("flute-webhooks produced unparseable output (exit {exit_code})")]
     BadOutput {
         exit_code: i32,
         stdout: String,
