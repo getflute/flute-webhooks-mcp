@@ -21,3 +21,10 @@ install-updater = false
 pr-run-mode = "skip"
 # Skip checking whether the specified configuration files are up to date
 allow-dirty = []
+# Homebrew tap to publish the formula to on every release. The HOMEBREW_TAP_TOKEN
+# secret on this repo carries a fine-grained PAT with Contents: write on the tap.
+# Without this block, cargo-dist only attaches the .rb file to the Release page;
+# brew users have to install via a direct URL instead of
+# `brew install getflute/flute-webhooks-mcp/flute-webhooks-mcp`.
+tap = "getflute/homebrew-flute-webhooks-mcp"
+publish-jobs = ["homebrew"]
