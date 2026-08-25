@@ -8,7 +8,7 @@ The server spawns `flute-webhooks --output json …` once per tool call, parses 
 
 ## Install
 
-Pick whichever installer matches your platform — each one drops a `flute-webhooks-mcp` binary on your `PATH`.
+Pick whichever installer matches your platform. Each drops a `flute-webhooks-mcp` binary in a directory your *shell* likely has on `PATH` — your MCP client probably does not (see [Binary paths](#binary-paths)).
 
 ```bash
 # macOS / Linux (curl + sh)
@@ -27,7 +27,7 @@ Or, to build from source:
 cargo install --path .
 ```
 
-Prereq: install `flute-webhooks` first (see [getflute/flute-webhooks-cli](https://github.com/getflute/flute-webhooks-cli)) and run `flute-webhooks auth login` once per profile you'll use.
+Prereq: install `flute-webhooks` first (see [getflute/flute-webhooks-cli](https://github.com/getflute/flute-webhooks-cli)) and run `flute-webhooks auth login` once per profile you'll use. Note where both binaries land — you need their absolute paths to configure a client (see [Binary paths](#binary-paths)).
 
 ## Run
 
@@ -37,31 +37,94 @@ flute-webhooks-mcp        # talks JSON-RPC over stdio
 
 Start one server instance per environment (`sandbox` vs `production`) — the profile is **pinned at startup**.
 
+Two flags mirror the env vars, for a client that can set arguments more easily than an environment: `--binary <path>` (same as `FLUTE_WEBHOOKS_BIN`) and `--profile <sandbox|production>` (same as `FLUTE_PROFILE`). The flag wins over the env var.
+
 ## Environment variables
 
 | Variable | Default | Purpose |
 |---|---|---|
 | `FLUTE_PROFILE` | `sandbox` | `sandbox` or `production` (alias `prod`). Pinned at startup. |
-| `FLUTE_WEBHOOKS_BIN` | resolved on `PATH` | Override the `flute-webhooks` binary location. |
+| `FLUTE_WEBHOOKS_BIN` | *(unset — falls back to a `PATH` lookup that usually fails under an MCP client; set it)* | Absolute path to the `flute-webhooks` binary. See [Binary paths](#binary-paths). |
 | `FLUTE_MCP_TIMEOUT_SECS` | `30` | Per-call timeout for the child process. |
-| `FLUTE_MCP_DEBUG` | unset | When set to any non-empty value, route `flute-webhooks` stderr to this server's tracing layer. |
+| `FLUTE_MCP_DEBUG` | unset | When set to any non-empty value — including `0` and `false` — route `flute-webhooks` stderr to this server's tracing layer. Unset it to turn it off. |
 | `RUST_LOG` | `info` | Standard `tracing` filter. Logs go to *stderr* only. |
 
+## Binary paths
+
+**Assume neither binary is on the client's `PATH`, and configure both by absolute path.**
+
+Your MCP client spawns `flute-webhooks-mcp` directly as a child process — it does not run your login shell first. A client started from the macOS Dock, Windows Explorer, or an IDE inherits a minimal `PATH` (often just `/usr/bin:/bin:/usr/sbin:/sbin`) containing none of the directories your `.zshrc`/`.bashrc` or the installers add: `/usr/local/bin`, `/opt/homebrew/bin`, `~/.local/bin`. That `flute-webhooks-mcp` runs fine when *you* type it in a terminal proves nothing here — that `PATH` is your shell's, not the client's.
+
+Two separate lookups depend on this, and each fails differently:
+
+- **`command`** — the path the client uses to launch this server. If it can't be resolved, the server never starts and the client reports it as failed or disconnected, with nothing in this server's logs (there are none yet).
+- **`FLUTE_WEBHOOKS_BIN`** — where this server finds the `flute-webhooks` CLI. Left unset, it falls back to a `PATH` lookup for `flute-webhooks`; when that misses, the server prints ``could not find `flute-webhooks` on PATH`` to stderr and exits 2 **before serving a single request**, so this too surfaces as a dead server rather than a tool error.
+
+Get the real paths from your own shell:
+
+```bash
+# macOS / Linux
+command -v flute-webhooks
+command -v flute-webhooks-mcp
+```
+
+```powershell
+# Windows (PowerShell)
+(Get-Command flute-webhooks).Source
+(Get-Command flute-webhooks-mcp).Source
+```
+
+If those come up empty, the binary isn't installed for this user — install it first (above) rather than guessing a path. For reference, the installers put `flute-webhooks-mcp` in:
+
+| Installed via | Location |
+|---|---|
+| shell / PowerShell installer, `cargo install` | `~/.cargo/bin` (Windows: `%USERPROFILE%\.cargo\bin`) |
+| Homebrew, Apple Silicon | `/opt/homebrew/bin` |
+| Homebrew, Intel macOS / Linuxbrew | `/usr/local/bin`, `/home/linuxbrew/.linuxbrew/bin` |
+
+`FLUTE_WEBHOOKS_BIN` must name the executable itself, not the directory holding it. Point it at a missing path or a directory and the server exits 2 at startup with ``configuration error: FLUTE_WEBHOOKS_BIN=`…` does not exist or is not executable`` — checked at launch on purpose, so a bad path shows up immediately instead of on the first tool call. The check is existence-only despite that wording, so a file without the executable bit gets past startup and fails on the first tool call with `kind:"spawn"` — as does a binary that disappears after startup.
+
+Neither config format expands `~` or `$HOME` — write the path out in full. On Windows, escape the backslashes in JSON (`"C:\\Program Files\\flute-webhooks\\flute-webhooks.exe"`) or use a TOML literal string (`'C:\Program Files\flute-webhooks\flute-webhooks.exe'`), and include the `.exe`.
+
 ## Claude Desktop config
+
+Replace both `/path/to/…` placeholders with the absolute paths you found above.
 
 ```jsonc
 {
   "mcpServers": {
     "flute-webhooks-sandbox": {
-      "command": "flute-webhooks-mcp",
-      "env": { "FLUTE_PROFILE": "sandbox" }
+      "command": "/path/to/mcp/flute-webhooks-mcp",
+      "env": {
+        "FLUTE_PROFILE": "sandbox",
+        "FLUTE_WEBHOOKS_BIN": "/path/to/cli/flute-webhooks"
+      }
     },
     "flute-webhooks-prod": {
-      "command": "flute-webhooks-mcp",
-      "env": { "FLUTE_PROFILE": "production" }
+      "command": "/path/to/mcp/flute-webhooks-mcp",
+      "env": {
+        "FLUTE_PROFILE": "production",
+        "FLUTE_WEBHOOKS_BIN": "/path/to/cli/flute-webhooks"
+      }
     }
   }
 }
+```
+
+If a server shows as failed, check the client's MCP logs for this server's stderr — on macOS, `~/Library/Logs/Claude/mcp-server-flute-webhooks-sandbox.log`. A `could not find flute-webhooks on PATH` line there means `FLUTE_WEBHOOKS_BIN` is unset or wrong; no log file at all usually means `command` itself didn't resolve.
+
+## Codex app config
+
+Codex stores MCP servers in `~/.codex/config.toml`. The Codex app, CLI, and IDE extension share this configuration — so even if you only ever launch `codex` from a shell that has both binaries on `PATH`, set the absolute paths anyway or the same config breaks under the app and the extension.
+
+```toml
+[mcp_servers.flute-webhooks-sandbox]
+command = "/path/to/mcp/flute-webhooks-mcp"
+env = { FLUTE_PROFILE = "sandbox", FLUTE_WEBHOOKS_BIN = "/path/to/cli/flute-webhooks" }
+
+[mcp_servers.flute-webhooks-prod]
+command = "/path/to/mcp/flute-webhooks-mcp"
+env = { FLUTE_PROFILE = "production", FLUTE_WEBHOOKS_BIN = "/path/to/cli/flute-webhooks" }
 ```
 
 ## Tool inventory
@@ -87,6 +150,8 @@ Excluded by design: the upstream `tui`, `auth login` (interactive), `listen` (lo
 Every tool returns either a success result or `isError: true` with a structured JSON content item containing at minimum a `kind` field — one of `api`, `transport`, `auth`, `decode`, `client`, `spawn`, `timeout`, `bad_output`. `api` errors also carry `status` and (where the server provided one) `correlation_id`.
 
 For an agent: branch on `kind` first. `transport` and `api` with status ∈ {500,502,503,504} are safe to retry with backoff. `auth` means run `flute-webhooks auth login` on the operator's machine.
+
+Startup failures never reach this layer: a bad or missing `flute-webhooks` path makes the process exit 2 with a plain stderr line, so the client sees a server that won't start. See [Binary paths](#binary-paths).
 
 ## License
 
