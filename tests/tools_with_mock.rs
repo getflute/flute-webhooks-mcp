@@ -20,6 +20,18 @@ fn cfg() -> Arc<Config> {
     })
 }
 
+/// Pull the single JSON content item out of a CallToolResult as a string.
+fn auth_payload(result: &rmcp::model::CallToolResult) -> String {
+    result
+        .content
+        .first()
+        .expect("expected at least one content item")
+        .as_text()
+        .expect("expected text content")
+        .text
+        .clone()
+}
+
 #[tokio::test]
 async fn endpoints_list_argv_matches_agents_md_spec() {
     let mock = MockRunner::new(vec![Ok(json!({"data": []}))]);
@@ -209,7 +221,10 @@ async fn event_types_list_argv() {
 
 #[tokio::test]
 async fn deliveries_list_no_filters() {
-    let mock = MockRunner::new(vec![Ok(json!({"items": [], "total": 0}))]);
+    let mock = MockRunner::new(vec![Ok(json!({
+        "items": [],
+        "pageInfo": {"pageIndex": 0, "pageSize": 50, "totalItems": 0, "totalPages": 0, "hasMore": false}
+    }))]);
     let server = FluteServer::new(cfg(), mock.clone());
     server
         .deliveries_list(Parameters(DeliveriesList {
@@ -235,7 +250,10 @@ async fn deliveries_list_no_filters() {
 
 #[tokio::test]
 async fn deliveries_list_all_filters() {
-    let mock = MockRunner::new(vec![Ok(json!({"items": [], "total": 0}))]);
+    let mock = MockRunner::new(vec![Ok(json!({
+        "items": [],
+        "pageInfo": {"pageIndex": 0, "pageSize": 50, "totalItems": 0, "totalPages": 0, "hasMore": false}
+    }))]);
     let server = FluteServer::new(cfg(), mock.clone());
     server
         .deliveries_list(Parameters(DeliveriesList {
@@ -290,7 +308,18 @@ async fn deliveries_get_argv() {
 
 #[tokio::test]
 async fn deliveries_retry_argv() {
-    let mock = MockRunner::new(vec![Ok(json!({"id":"d1","status":"pending"}))]);
+    let mock = MockRunner::new(vec![Ok(json!({
+        "deliveryLogId": "d1",
+        "endpointId": "e1",
+        "eventId": "ev1",
+        "eventType": "transaction.card.captured",
+        "attemptNumber": 2,
+        "deliveryLogStatus": "Failure",
+        "endpointHTTPResponseCode": 500,
+        "roundTripDurationMs": 12,
+        "requestBody": "{}",
+        "responseBody": "err"
+    }))]);
     let server = FluteServer::new(cfg(), mock.clone());
     server
         .deliveries_retry(Parameters(DeliveryId { id: "d1".into() }))
@@ -332,30 +361,84 @@ async fn auth_status_reports_authenticated_when_decode_ok() {
     assert!(json.contains("\"sandbox\""), "got {json}");
 }
 
+/// The real missing-credentials path. Upstream `auth_print_keys` builds this with a
+/// bare `anyhow!`, and the CLI's classifier only lifts `kind` out of a downcast to
+/// its `ApiError` — so it reaches us as `kind:"client"`, not `kind:"auth"`.
+#[tokio::test]
+async fn auth_status_reports_unauth_on_kind_client() {
+    use flute_webhooks_mcp::error::FluteError;
+    let mock = MockRunner::new(vec![Err(FluteError::Client {
+        message: "no credentials for [sandbox]; run `flute-webhooks auth login`".into(),
+    })]);
+    let server = FluteServer::new(cfg(), mock.clone());
+    let result = server.auth_status(Parameters(Empty {})).await.unwrap();
+    assert!(
+        !result.is_error.unwrap_or(false),
+        "must not be a tool error"
+    );
+    let json = auth_payload(&result);
+    assert!(json.contains("\"authenticated\":false"), "got {json}");
+    assert!(json.contains("\"reason\":\"client\""), "got {json}");
+    assert!(json.contains("no credentials for [sandbox]"), "got {json}");
+    assert!(json.contains("auth login"), "got {json}");
+}
+
+/// An OAuth rejection is also `kind:"client"` upstream, and is equally
+/// "not authenticated" — but the operator hint differs, so the CLI's own message
+/// must survive into the payload rather than being replaced by a canned string.
+#[tokio::test]
+async fn auth_status_passes_through_oauth_failure_message() {
+    use flute_webhooks_mcp::error::FluteError;
+    let mock = MockRunner::new(vec![Err(FluteError::Client {
+        message: "OAuth token request to https://oauth.example failed: 401 invalid_client".into(),
+    })]);
+    let server = FluteServer::new(cfg(), mock.clone());
+    let result = server.auth_status(Parameters(Empty {})).await.unwrap();
+    let json = auth_payload(&result);
+    assert!(json.contains("\"authenticated\":false"), "got {json}");
+    assert!(json.contains("invalid_client"), "got {json}");
+}
+
+/// Unreachable from `auth keys` today (`ApiError::Auth` is only built by the API
+/// client), but wired up so an upstream reclassification keeps working.
 #[tokio::test]
 async fn auth_status_reports_unauth_on_kind_auth() {
     use flute_webhooks_mcp::error::FluteError;
     let mock = MockRunner::new(vec![Err(FluteError::Auth {
-        message: "no credentials for [sandbox]".into(),
+        message: "no token".into(),
     })]);
     let server = FluteServer::new(cfg(), mock.clone());
     let result = server.auth_status(Parameters(Empty {})).await.unwrap();
-    let first = result
-        .content
-        .first()
-        .expect("expected at least one content item");
-    let json = first
-        .as_text()
-        .expect("expected text content")
-        .text
-        .as_str();
+    let json = auth_payload(&result);
     assert!(json.contains("\"authenticated\":false"), "got {json}");
+    assert!(json.contains("\"reason\":\"auth\""), "got {json}");
     assert!(json.contains("auth login"), "got {json}");
+}
+
+/// An infrastructure fault is not an authentication verdict — it must stay a tool
+/// error instead of being reported as `authenticated:false`.
+#[tokio::test]
+async fn auth_status_surfaces_spawn_failure_as_tool_error() {
+    use flute_webhooks_mcp::error::FluteError;
+    let mock = MockRunner::new(vec![Err(FluteError::Spawn("no such file".into()))]);
+    let server = FluteServer::new(cfg(), mock.clone());
+    let result = server.auth_status(Parameters(Empty {})).await.unwrap();
+    assert!(
+        result.is_error.unwrap_or(false),
+        "spawn must be a tool error"
+    );
+    let json = auth_payload(&result);
+    assert!(json.contains("\"kind\":\"spawn\""), "got {json}");
+    assert!(!json.contains("authenticated"), "got {json}");
 }
 
 #[tokio::test]
 async fn endpoints_ping_argv() {
-    let mock = MockRunner::new(vec![Ok(json!({"success": true, "status_code": 200}))]);
+    let mock = MockRunner::new(vec![Ok(json!({
+        "isDelivered": true,
+        "endpointHTTPResponseCode": 200,
+        "roundTripDurationMs": 34
+    }))]);
     let server = FluteServer::new(cfg(), mock.clone());
     server
         .endpoints_ping(Parameters(EndpointId { id: "e1".into() }))
@@ -385,6 +468,6 @@ async fn auth_status_argv() {
     server.auth_status(Parameters(Empty {})).await.unwrap();
     assert_eq!(
         mock.calls()[0],
-        vec!["--profile", "sandbox", "--output", "json", "auth", "token",]
+        vec!["--profile", "sandbox", "--output", "json", "auth", "keys",]
     );
 }
