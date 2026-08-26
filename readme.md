@@ -14,12 +14,14 @@ Pick whichever installer matches your platform. Each drops a `flute-webhooks-mcp
 # macOS / Linux (curl + sh)
 curl -LsSf https://github.com/getflute/flute-webhooks-mcp/releases/latest/download/flute-webhooks-mcp-installer.sh | sh
 
-# macOS / Linux (Homebrew — this repo serves as its own tap)
+# macOS / Linux (Homebrew)
 brew install getflute/flute-webhooks-mcp/flute-webhooks-mcp
 
 # Windows (PowerShell)
 irm https://github.com/getflute/flute-webhooks-mcp/releases/latest/download/flute-webhooks-mcp-installer.ps1 | iex
 ```
+
+That `brew install` line taps [`getflute/homebrew-flute-webhooks-mcp`](https://github.com/getflute/homebrew-flute-webhooks-mcp) — a separate repository this one pushes its formula to on every release. (Homebrew always rewrites `user/repo` as `github.com/user/homebrew-repo`; a project repo can never serve as its own tap.) The formula covers Apple Silicon macOS and x86_64 Linux — the two Unix targets released here. On Intel macOS, use the shell installer.
 
 Or, to build from source:
 
@@ -79,8 +81,8 @@ If those come up empty, the binary isn't installed for this user — install it 
 | Installed via | Location |
 |---|---|
 | shell / PowerShell installer, `cargo install` | `~/.cargo/bin` (Windows: `%USERPROFILE%\.cargo\bin`) |
-| Homebrew, Apple Silicon | `/opt/homebrew/bin` |
-| Homebrew, Intel macOS / Linuxbrew | `/usr/local/bin`, `/home/linuxbrew/.linuxbrew/bin` |
+| Homebrew, Apple Silicon macOS | `/opt/homebrew/bin` |
+| Linuxbrew, x86_64 | `/home/linuxbrew/.linuxbrew/bin` |
 
 `FLUTE_WEBHOOKS_BIN` must name the executable itself, not the directory holding it. Point it at a missing path or a directory and the server exits 2 at startup with ``configuration error: FLUTE_WEBHOOKS_BIN=`…` does not exist or is not executable`` — checked at launch on purpose, so a bad path shows up immediately instead of on the first tool call. The check is existence-only despite that wording, so a file without the executable bit gets past startup and fails on the first tool call with `kind:"spawn"` — as does a binary that disappears after startup.
 
