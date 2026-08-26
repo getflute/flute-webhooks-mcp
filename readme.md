@@ -29,7 +29,7 @@ Or, to build from source:
 cargo install --path .
 ```
 
-Prereq: install `flute-webhooks` first (see [getflute/flute-webhooks-cli](https://github.com/getflute/flute-webhooks-cli)) and run `flute-webhooks auth login` once per profile you'll use. Note where both binaries land — you need their absolute paths to configure a client (see [Binary paths](#binary-paths)).
+Prereq: install **`flute-webhooks` v0.7.1 or newer** (see [getflute/flute-webhooks-cli](https://github.com/getflute/flute-webhooks-cli) and [Upstream CLI version](#upstream-cli-version)) and run `flute-webhooks auth login` once per profile you'll use. Note where both binaries land — you need their absolute paths to configure a client (see [Binary paths](#binary-paths)).
 
 ## Run
 
@@ -136,7 +136,7 @@ env = { FLUTE_PROFILE = "production", FLUTE_WEBHOOKS_BIN = "/path/to/cli/flute-w
 | `endpoints_list` | yes |
 | `endpoints_get` | yes |
 | `endpoints_create` | **no** — duplicates create a second endpoint |
-| `endpoints_update` | yes (full-state PUT) |
+| `endpoints_update` | yes (PATCH, JSON Merge Patch — omitted fields are left unchanged) |
 | `endpoints_delete` | yes (second call returns 404) |
 | `endpoints_ping` | yes |
 | `event_types_list` | yes |
@@ -146,6 +146,23 @@ env = { FLUTE_PROFILE = "production", FLUTE_WEBHOOKS_BIN = "/path/to/cli/flute-w
 | `auth_status` | yes |
 
 Excluded by design: the upstream `tui`, `auth login` (interactive), `listen` (long-running, no JSON), and `update` (operator-only).
+
+Tool results are the upstream CLI's JSON passed through verbatim, so the shapes an agent sees come from `flute-webhooks`, not from this server. The tool descriptions document the v0.7.1 contract: `endpoints_list` and `deliveries_list` return `{items, pageInfo}`, `endpoints_update` is a merge PATCH, `deliveries_retry` returns a full delivery log, and `auth_status` shells out to `auth keys`.
+
+Older CLIs are **not** supported — see [Upstream CLI version](#upstream-cli-version).
+
+## Upstream CLI version
+
+**Minimum: `flute-webhooks` v0.7.1.** Developed and tested against v0.7.4. Supporting older CLIs is deliberately out of scope — this server tracks the current upstream contract rather than bridging versions.
+
+Two upstream changes set that floor:
+
+| Needed for | Landed in | What this server relies on |
+|---|---|---|
+| Every tool's result shape | v0.7.0 | The Flute v2 spec pass: `{items, pageInfo}` list envelopes, `PATCH` on endpoint update, renamed wire fields, and `deliveries retry` returning a full delivery log |
+| `auth_status` | v0.7.1 | The `auth keys` subcommand (`auth token` was its former name) |
+
+Check yours with `flute-webhooks --version`.
 
 ## Errors
 
