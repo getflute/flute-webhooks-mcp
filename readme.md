@@ -21,25 +21,7 @@ brew install getflute/flute-webhooks-mcp/flute-webhooks-mcp
 irm https://github.com/getflute/flute-webhooks-mcp/releases/latest/download/flute-webhooks-mcp-installer.ps1 | iex
 ```
 
-That `brew install` line taps [`getflute/homebrew-flute-webhooks-mcp`](https://github.com/getflute/homebrew-flute-webhooks-mcp) — a separate repository this one pushes its formula to on every release. (Homebrew always rewrites `user/repo` as `github.com/user/homebrew-repo`; a project repo can never serve as its own tap.) The formula covers Apple Silicon macOS and x86_64 Linux — the two Unix targets released here. On Intel macOS, use the shell installer.
-
-Or, to build from source:
-
-```bash
-cargo install --path .
-```
-
-Prereq: install **`flute-webhooks` v0.7.1 or newer** (see [getflute/flute-webhooks-cli](https://github.com/getflute/flute-webhooks-cli) and [Upstream CLI version](#upstream-cli-version)) and run `flute-webhooks auth login` once per profile you'll use. Note where both binaries land — you need their absolute paths to configure a client (see [Binary paths](#binary-paths)).
-
-## Run
-
-```bash
-flute-webhooks-mcp        # talks JSON-RPC over stdio
-```
-
-Start one server instance per environment (`sandbox` vs `production`) — the profile is **pinned at startup**.
-
-Two flags mirror the env vars, for a client that can set arguments more easily than an environment: `--binary <path>` (same as `FLUTE_WEBHOOKS_BIN`) and `--profile <sandbox|production>` (same as `FLUTE_PROFILE`). The flag wins over the env var.
+Prereq: install the latest **`flute-webhooks`** release (see [getflute/flute-webhooks-cli](https://github.com/getflute/flute-webhooks-cli) and [Upstream CLI version](#upstream-cli-version)) and run `flute-webhooks auth login` once per profile you'll use. Note where both binaries land — you need their absolute paths to configure a client (see [Binary paths](#binary-paths)).
 
 ## Environment variables
 
@@ -50,6 +32,8 @@ Two flags mirror the env vars, for a client that can set arguments more easily t
 | `FLUTE_MCP_TIMEOUT_SECS` | `30` | Per-call timeout for the child process. |
 | `FLUTE_MCP_DEBUG` | unset | When set to any non-empty value — including `0` and `false` — route `flute-webhooks` stderr to this server's tracing layer. Unset it to turn it off. |
 | `RUST_LOG` | `info` | Standard `tracing` filter. Logs go to *stderr* only. |
+
+Two flags mirror the first two, for a client that sets arguments more easily than an environment: `--binary <path>` (same as `FLUTE_WEBHOOKS_BIN`) and `--profile <sandbox|production>` (same as `FLUTE_PROFILE`). The flag wins over the env var. The other three variables have no flag equivalent.
 
 ## Binary paths
 
@@ -147,20 +131,20 @@ env = { FLUTE_PROFILE = "production", FLUTE_WEBHOOKS_BIN = "/path/to/cli/flute-w
 
 Excluded by design: the upstream `tui`, `auth login` (interactive), `listen` (long-running, no JSON), and `update` (operator-only).
 
-Tool results are the upstream CLI's JSON passed through verbatim, so the shapes an agent sees come from `flute-webhooks`, not from this server. The tool descriptions document the v0.7.1 contract: `endpoints_list` and `deliveries_list` return `{items, pageInfo}`, `endpoints_update` is a merge PATCH, `deliveries_retry` returns a full delivery log, and `auth_status` shells out to `auth keys`.
+Tool results are the upstream CLI's JSON passed through verbatim, so the shapes an agent sees come from `flute-webhooks`, not from this server. The tool descriptions document the current contract: `endpoints_list` and `deliveries_list` return `{items, pageInfo}`, `endpoints_update` is a merge PATCH, `deliveries_retry` returns a full delivery log, and `auth_status` shells out to `auth keys`.
 
 Older CLIs are **not** supported — see [Upstream CLI version](#upstream-cli-version).
 
 ## Upstream CLI version
 
-**Minimum: `flute-webhooks` v0.7.1.** Developed and tested against v0.7.4. Supporting older CLIs is deliberately out of scope — this server tracks the current upstream contract rather than bridging versions.
+**Use the latest `flute-webhooks` release.** Supporting older CLIs is deliberately out of scope — this server tracks the current upstream contract rather than bridging versions.
 
-Two upstream changes set that floor:
+Two parts of that contract matter here:
 
-| Needed for | Landed in | What this server relies on |
-|---|---|---|
-| Every tool's result shape | v0.7.0 | The Flute v2 spec pass: `{items, pageInfo}` list envelopes, `PATCH` on endpoint update, renamed wire fields, and `deliveries retry` returning a full delivery log |
-| `auth_status` | v0.7.1 | The `auth keys` subcommand (`auth token` was its former name) |
+| Needed for | What this server relies on |
+|---|---|
+| Every tool's result shape | The Flute v2 spec pass: `{items, pageInfo}` list envelopes, `PATCH` on endpoint update, renamed wire fields, and `deliveries retry` returning a full delivery log |
+| `auth_status` | The `auth keys` subcommand (`auth token` was its former name) |
 
 Check yours with `flute-webhooks --version`.
 
