@@ -33,6 +33,8 @@ Prereq: install the latest **`flute-webhooks`** release (see [getflute/flute-web
 | `FLUTE_MCP_DEBUG` | unset | When set to any non-empty value — including `0` and `false` — route `flute-webhooks` stderr to this server's tracing layer. Unset it to turn it off. |
 | `RUST_LOG` | `info` | Standard `tracing` filter. Logs go to *stderr* only. |
 
+Two flags mirror the first two, for a client that sets arguments more easily than an environment: `--binary <path>` (same as `FLUTE_WEBHOOKS_BIN`) and `--profile <sandbox|production>` (same as `FLUTE_PROFILE`). The flag wins over the env var. The other three variables have no flag equivalent.
+
 ## Binary paths
 
 **Assume neither binary is on the client's `PATH`, and configure both by absolute path.**
