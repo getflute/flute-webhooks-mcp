@@ -10,15 +10,28 @@ The server spawns `flute-webhooks --output json …` once per tool call, parses 
 
 Pick whichever installer matches your platform. Each drops a `flute-webhooks-mcp` binary in a directory your *shell* likely has on `PATH` — your MCP client probably does not (see [Binary paths](#binary-paths)).
 
-```bash
-# macOS / Linux (curl + sh)
-curl -LsSf https://github.com/getflute/flute-webhooks-mcp/releases/latest/download/flute-webhooks-mcp-installer.sh | sh
+**Homebrew (Apple Silicon macOS / x86_64 Linux)**
 
-# macOS / Linux (Homebrew)
+```sh
 brew install getflute/flute-webhooks-mcp/flute-webhooks-mcp
+```
 
-# Windows (PowerShell)
-irm https://github.com/getflute/flute-webhooks-mcp/releases/latest/download/flute-webhooks-mcp-installer.ps1 | iex
+**Shell script (Apple Silicon macOS / x86_64 Linux — installs from GitHub Releases)**
+
+```sh
+curl --proto '=https' --tlsv1.2 -LsSf https://github.com/getflute/flute-webhooks-mcp/releases/latest/download/flute-webhooks-mcp-installer.sh | sh
+```
+
+**PowerShell (x86_64 Windows — installs from GitHub Releases)**
+
+```powershell
+powershell -ExecutionPolicy Bypass -c "irm https://github.com/getflute/flute-webhooks-mcp/releases/latest/download/flute-webhooks-mcp-installer.ps1 | iex"
+```
+
+**From source**
+
+```sh
+cargo install --path .
 ```
 
 Prereq: install the latest **`flute-webhooks`** release (see [getflute/flute-webhooks-cli](https://github.com/getflute/flute-webhooks-cli) and [Upstream CLI version](#upstream-cli-version)) and run `flute-webhooks auth login` once per profile you'll use. Note where both binaries land — you need their absolute paths to configure a client (see [Binary paths](#binary-paths)).
