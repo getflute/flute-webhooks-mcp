@@ -3,7 +3,10 @@ use std::sync::Arc;
 use rmcp::{
     ServerHandler,
     handler::server::wrapper::Parameters,
-    model::{CallToolResult, Content, ErrorData as McpError, ServerInfo},
+    model::{
+        CallToolResult, Content, ErrorData as McpError, Implementation, ServerCapabilities,
+        ServerInfo,
+    },
     schemars, tool, tool_handler, tool_router,
 };
 use serde::Deserialize;
@@ -397,10 +400,18 @@ impl FluteServer {
 #[tool_handler]
 impl ServerHandler for FluteServer {
     fn get_info(&self) -> ServerInfo {
-        ServerInfo::default().with_instructions(
-            "Drives the `flute-webhooks` CLI. The active profile is pinned at server start; \
+        // Not `ServerInfo::default()`: that fills `serverInfo` from rmcp's own
+        // build env (reporting `rmcp` + the SDK version) and advertises no
+        // capabilities, so clients never learn this server offers tools.
+        ServerInfo::new(ServerCapabilities::builder().enable_tools().build())
+            .with_server_info(Implementation::new(
+                env!("CARGO_PKG_NAME"),
+                env!("CARGO_PKG_VERSION"),
+            ))
+            .with_instructions(
+                "Drives the `flute-webhooks` CLI. The active profile is pinned at server start; \
              launch one instance per environment (sandbox vs production). Credentials are read \
              from the OS keychain via `flute-webhooks auth login` — run that first.",
-        )
+            )
     }
 }
