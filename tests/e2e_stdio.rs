@@ -74,6 +74,16 @@ fn lists_tools_and_calls_endpoints_list_through_stdio() {
     let init = read_one_frame(&mut reader);
     assert_eq!(init["id"], 1);
     assert!(init["result"].is_object());
+    // Identify as this crate (not the rmcp SDK) and advertise the tools capability.
+    assert_eq!(init["result"]["serverInfo"]["name"], "flute-webhooks-mcp");
+    assert_eq!(
+        init["result"]["serverInfo"]["version"],
+        env!("CARGO_PKG_VERSION")
+    );
+    assert!(
+        init["result"]["capabilities"]["tools"].is_object(),
+        "initialize must advertise the tools capability: {init}"
+    );
 
     // 2. notifications/initialized (one-way, no response expected)
     stdin
