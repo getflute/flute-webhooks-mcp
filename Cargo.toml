@@ -29,7 +29,7 @@ clap = { version = "4", features = ["derive", "env"] }
 async-trait = "0.1"
 
 [dev-dependencies]
-tokio = { version = "1", features = ["macros", "rt-multi-thread", "process", "time", "test-util"] }
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "process", "sync", "time", "test-util"] }
 pretty_assertions = "1"
 tempfile = "3"
 assert_cmd = "2"
