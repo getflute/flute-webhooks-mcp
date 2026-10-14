@@ -2,6 +2,7 @@
 name = "flute-webhooks-mcp"
 version = "0.5.1"
 edition = "2024"
+rust-version = "1.99"
 description = "MCP server that drives the flute-webhooks CLI"
 license = "MIT"
 repository = "https://github.com/getflute/flute-webhooks-mcp"
