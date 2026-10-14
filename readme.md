@@ -34,6 +34,8 @@ powershell -ExecutionPolicy Bypass -c "irm https://github.com/getflute/flute-web
 cargo install --path .
 ```
 
+This builds with Rust 1.99.0, pinned in `rust-toolchain.toml`; rustup installs it automatically the first time.
+
 Prereq: install the latest **`flute-webhooks`** release (see [getflute/flute-webhooks-cli](https://github.com/getflute/flute-webhooks-cli) and [Upstream CLI version](#upstream-cli-version)) and run `flute-webhooks auth login` once per profile you'll use. Note where both binaries land — you need their absolute paths to configure a client (see [Binary paths](#binary-paths)).
 
 ## Automatic configuration
