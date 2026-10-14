@@ -36,6 +36,19 @@ cargo install --path .
 
 Prereq: install the latest **`flute-webhooks`** release (see [getflute/flute-webhooks-cli](https://github.com/getflute/flute-webhooks-cli) and [Upstream CLI version](#upstream-cli-version)) and run `flute-webhooks auth login` once per profile you'll use. Note where both binaries land — you need their absolute paths to configure a client (see [Binary paths](#binary-paths)).
 
+## Automatic configuration
+
+Instead of configuring a client by hand, you can use [**flute-mcp-setup**](https://github.com/getflute/flute-mcp-setup), a small desktop app that writes the client configuration described below for you. Download the file for your computer from its [latest release](https://github.com/getflute/flute-mcp-setup/releases/latest) (Apple Silicon macOS, x86_64 Windows or x86_64 Linux — a single binary, no installer), run it, tick **Flute Webhooks MCP** and press **Configure**. It:
+
+- finds Claude Desktop, Claude Code and the ChatGPT/Codex app, and configures each one it finds (Claude Code at user scope, via `claude mcp add-json`);
+- checks that both `flute-webhooks` and `flute-webhooks-mcp` are installed — if either is missing, it says how to install it and changes nothing;
+- writes the `flute-webhooks-sandbox` and `flute-webhooks-prod` entries shown in [Claude Desktop config](#claude-desktop-config) and [Codex app config](#codex-app-config), with the absolute paths it found for `command` and `FLUTE_WEBHOOKS_BIN`;
+- backs up each file before changing it, keeps your other servers and any keys you added to these entries, and is safe to run again.
+
+Tick **Flute CLI MCP** as well to set up [flute-cli-mcp](https://github.com/getflute/flute-cli-mcp) in the same run. It does not sign you in: run `flute-webhooks auth login` (and `flute-webhooks --profile production auth login`) yourself.
+
+The binaries are not code-signed; [its README](https://github.com/getflute/flute-mcp-setup#running-the-app) explains how to get past each OS's first-run warning. On other platforms (such as Intel Macs), or to see exactly what changes, configure the client by hand as described below.
+
 ## Environment variables
 
 | Variable | Default | Purpose |
@@ -49,6 +62,8 @@ Prereq: install the latest **`flute-webhooks`** release (see [getflute/flute-web
 Two flags mirror the first two, for a client that sets arguments more easily than an environment: `--binary <path>` (same as `FLUTE_WEBHOOKS_BIN`) and `--profile <sandbox|production>` (same as `FLUTE_PROFILE`). The flag wins over the env var. The other three variables have no flag equivalent.
 
 ## Binary paths
+
+If you used [flute-mcp-setup](#automatic-configuration), it has already resolved both paths; this section and the two config sections below are for configuring a client by hand and for troubleshooting.
 
 **Assume neither binary is on the client's `PATH`, and configure both by absolute path.**
 
